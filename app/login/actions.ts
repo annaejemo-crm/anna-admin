@@ -1,34 +1,22 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import { headers } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 
-function getSiteUrl(hdrs) {
-  const proto = hdrs.get('x-forwarded-proto') || 'https';
-  const host = hdrs.get('x-forwarded-host') || hdrs.get('host') || 'localhost:3000';
-  return `${proto}://${host}`;
-}
-
 export async function login(formData) {
-  const email = String(formData.get('email') || '');
+  const email = String(formData.get('email') || '').trim();
+  const password = String(formData.get('password') || '');
 
-  if (!email) redirect('/login?error=Mejladress+saknas');
+  if (!email || !password) redirect('/login?error=Fyll+i+mejl+och+lösenord');
 
   const supabase = await createClient();
-  const hdrs = await headers();
-  const siteUrl = getSiteUrl(hdrs);
-
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: { emailRedirectTo: `${siteUrl}/auth/callback` },
-  });
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
     redirect(`/login?error=${encodeURIComponent(error.message)}`);
   }
 
-  redirect('/login?sent=1');
+  redirect('/admin');
 }
 
 export async function logout() {
