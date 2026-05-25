@@ -1,217 +1,294 @@
 import { createClient } from '@/lib/supabase/server';
 
-const MONTH_SHORT = ['jan','feb','mar','apr','maj','jun','jul','aug','sep','okt','nov','dec'];
+type BokningRow = {
+  id: string;
+  kund_id: string;
+  datum: string | null;
+  bokningsavgift_kr: number | null;
+  bildpaket_kr: number | null;
+  bokningsavgift_betald: boolean | null;
+  bildpaket_betald: boolean | null;
+  status: string;
+  fotograferingstyp_id: string | null;
+};
 
-export default async function EkonomiPage() {
+type TypRow = { id: string; namn: string };
+type KundRow = { id: string; foretagsnamn: string | null };
+
+type ManadStat = { manad: number; total: number; paid: number; count: number };
+type ArStat = {
+  ar: number;
+  total: number;
+  paid: number;
+  count: number;
+  foretag: number;
+  privat: number;
+  manader: ManadStat[];
+};
+
+type TypStat = { count: number; total: number };
+
+const MANADER = ['jan','feb','mar','apr','maj','jun','jul','aug','sep','okt','nov','dec'];
+
+export default async function EkonomiPage(props: { searchParams?: Promise<{ ar?: string }> }) {
   const supabase = await createClient();
+  const sp = props.searchParams ? await props.searchParams : {};
+  const valtAr = sp.ar ? parseInt(sp.ar, 10) : new Date().getFullYear();
 
-  const { data: bsRaw } = await supabase
+  const { data: bokningarRaw } = await supabase
     .from('bokningar')
-    .select('datum, bokningsavgift_kr, bildpaket_kr, bokningsavgift_betald, bildpaket_betald, kund_id, fotograferingstyp:fotograferingstyper(namn)');
+    .select('id, kund_id, datum, bokningsavgift_kr, bildpaket_kr, bokningsavgift_betald, bildpaket_betald, status, fotograferingstyp_id');
+  const { data: typerRaw } = await supabase
+    .from('fotograferingstyper')
+    .select('id, namn');
+  const { data: kunderRaw } = await supabase
+    .from('kunder')
+    .select('id, foretagsnamn');
 
-  const { data: kunderRaw } = await supabase.from('kunder').select('id, foretagsnamn');
-  const foretagSet = new Set((kunderRaw || []).filter(k => k.foretagsnamn).map(k => k.id));
+  const bokningar: BokningRow[] = (bokningarRaw || []) as BokningRow[];
+  const typer: TypRow[] = (typerRaw || []) as TypRow[];
+  const kunder: KundRow[] = (kunderRaw || []) as KundRow[];
 
-  const bs = bsRaw || [];
-  const currentYear = new Date().getFullYear();
+  const typNamn: Record<string, string> = {};
+  for (let i = 0; i < typer.length; i++) {
+    typNamn[typer[i].id] = typer[i].namn;
+  }
 
-  function statsFor(year) {
-    const yearBs = bs.filter(b => b.datum && new Date(b.datum).getFullYear() === year);
-    const monthly = Array(12).fill(0);
-    let total = 0, paid = 0, foretag = 0, privat = 0;
-    for (const b of yearBs) {
-      const t = (b.bokningsavgift_kr||0) + (b.bildpaket_kr||0);
-      const p = (b.bokningsavgift_betald ? (b.bokningsavgift_kr||0) : 0) + (b.bildpaket_betald ? (b.bildpaket_kr||0) : 0);
-      const m = new Date(b.datum).getMonth();
-      monthly[m] += t;
-      total += t;
-      paid += p;
-      if (foretagSet.has(b.kund_id)) foretag++; else privat++;
+  const foretagSet: Record<string, boolean> = {};
+  for (let i = 0; i < kunder.length; i++) {
+    if (kunder[i].foretagsnamn) foretagSet[kunder[i].id] = true;
+  }
+
+  function statsFor(ar: number): ArStat {
+    const manader: ManadStat[] = [];
+    for (let m = 0; m < 12; m++) {
+      manader.push({ manad: m, total: 0, paid: 0, count: 0 });
     }
-    return {
-      year, monthly, total, paid,
-      count: yearBs.length, foretag, privat,
-      avg: yearBs.length > 0 ? Math.round(total / yearBs.length) : 0,
-    };
+    let total = 0;
+    let paid = 0;
+    let count = 0;
+    let foretag = 0;
+    let privat = 0;
+
+    for (let i = 0; i < bokningar.length; i++) {
+      const b = bokningar[i];
+      if (!b.datum) continue;
+      if (b.status === 'avbokad') continue;
+      const d = new Date(b.datum);
+      if (d.getFullYear() !== ar) continue;
+      const summa = (b.bokningsavgift_kr || 0) + (b.bildpaket_kr || 0);
+      let betalt = 0;
+      if (b.bokningsavgift_betald) betalt += b.bokningsavgift_kr || 0;
+      if (b.bildpaket_betald) betalt += b.bildpaket_kr || 0;
+      const m = d.getMonth();
+      manader[m].total += summa;
+      manader[m].paid += betalt;
+      manader[m].count += 1;
+      total += summa;
+      paid += betalt;
+      count += 1;
+      if (foretagSet[b.kund_id]) foretag += 1; else privat += 1;
+    }
+    return { ar: ar, total: total, paid: paid, count: count, foretag: foretag, privat: privat, manader: manader };
   }
 
-  const y2024 = statsFor(2024);
-  const y2025 = statsFor(2025);
-  const y2026 = statsFor(2026);
-  const allYears = [y2024, y2025, y2026];
+  const stat2024 = statsFor(2024);
+  const stat2025 = statsFor(2025);
+  const stat2026 = statsFor(2026);
+  const valtStat = valtAr === 2024 ? stat2024 : valtAr === 2025 ? stat2025 : stat2026;
 
-  const maxMonth = Math.max(1, ...allYears.flatMap(y => y.monthly));
-
-  const typStats = {};
-  for (const b of bs) {
-    if (!b.datum || new Date(b.datum).getFullYear() !== currentYear) continue;
-    const ftRaw = b.fotograferingstyp;
-    const ft = Array.isArray(ftRaw) ? ftRaw[0] : ftRaw;
-    const t = (ft && ft.namn) || 'Okänd';
-    if (!typStats[t]) typStats[t] = { count: 0, total: 0 };
-    typStats[t].count++;
-    typStats[t].total += (b.bokningsavgift_kr||0) + (b.bildpaket_kr||0);
+  const typStats: Record<string, TypStat> = {};
+  for (let i = 0; i < bokningar.length; i++) {
+    const b = bokningar[i];
+    if (!b.datum) continue;
+    if (b.status === 'avbokad') continue;
+    const d = new Date(b.datum);
+    if (d.getFullYear() !== valtAr) continue;
+    const namn = b.fotograferingstyp_id ? (typNamn[b.fotograferingstyp_id] || 'Övrigt') : 'Övrigt';
+    if (!typStats[namn]) typStats[namn] = { count: 0, total: 0 };
+    typStats[namn].count += 1;
+    typStats[namn].total += (b.bokningsavgift_kr || 0) + (b.bildpaket_kr || 0);
   }
-  const typArr = Object.entries(typStats).map(function(entry){
-    const namn = entry[0];
-    const s = entry[1];
-    return { namn: namn, count: s.count, total: s.total, avg: s.count > 0 ? Math.round(s.total/s.count) : 0 };
-  }).sort(function(a,b){ return b.total - a.total; });
 
-  const current = y2026;
-  const remaining = current.total - current.paid;
+  const typArr: { namn: string; count: number; total: number; avg: number }[] = [];
+  const typNycklar = Object.keys(typStats);
+  for (let i = 0; i < typNycklar.length; i++) {
+    const namn = typNycklar[i];
+    const s = typStats[namn];
+    typArr.push({ namn: namn, count: s.count, total: s.total, avg: s.count > 0 ? Math.round(s.total / s.count) : 0 });
+  }
+  typArr.sort(function(a, b) { return b.total - a.total; });
+
+  const snitt = valtStat.count > 0 ? Math.round(valtStat.total / valtStat.count) : 0;
 
   return (
     <>
       <div className="flex justify-between items-end mb-10 pb-6 border-b border-line">
         <div>
-          <div className="eyebrow mb-1.5">Räkenskapsår {currentYear}</div>
+          <div className="eyebrow mb-1.5">Räkenskapsår {valtAr}</div>
           <h1 className="font-serif text-[42px] font-light leading-tight">Ekonomi</h1>
+        </div>
+        <div className="flex gap-1.5">
+          <YearPill ar={2024} aktiv={valtAr === 2024} />
+          <YearPill ar={2025} aktiv={valtAr === 2025} />
+          <YearPill ar={2026} aktiv={valtAr === 2026} />
         </div>
       </div>
 
       <div className="grid grid-cols-4 gap-6 mb-12">
-        <Kpi label="Bokad omsättning" value={(current.total).toLocaleString('sv-SE') + ' kr'} sub={current.count + ' bokningar'} />
-        <Kpi label="Inkommit" value={(current.paid).toLocaleString('sv-SE') + ' kr'} sub={current.total > 0 ? Math.round(100 * current.paid / current.total) + '% av bokat' : '–'} />
-        <Kpi label="Återstår" value={(Math.max(0, remaining)).toLocaleString('sv-SE') + ' kr'} sub="bokat minus inkommet" />
-        <Kpi label="Snittpris per bokning" value={(current.avg).toLocaleString('sv-SE') + ' kr'} sub={current.foretag + ' företag · ' + current.privat + ' privat'} />
+        <Kpi label="Bokad omsättning" value={`${valtStat.total.toLocaleString('sv-SE')} kr`} sub={`${valtStat.count} bokningar`} />
+        <Kpi label="Inkommit" value={`${valtStat.paid.toLocaleString('sv-SE')} kr`} sub="bokningsavgift + paket" />
+        <Kpi label="Återstår" value={`${Math.max(0, valtStat.total - valtStat.paid).toLocaleString('sv-SE')} kr`} sub="ej betalt än" />
+        <Kpi label="Snittpris" value={`${snitt.toLocaleString('sv-SE')} kr`} sub="per bokning" />
       </div>
 
-      <section className="mb-12">
-        <h2 className="font-serif text-2xl mb-1">Året mot tidigare år</h2>
-        <p className="text-ink-muted text-[13px] mb-5">Snabb överblick. Den färgade tonen är aktuellt år.</p>
-        <div className="grid grid-cols-3 gap-5">
-          {allYears.map(y => (
-            <YearCard key={y.year} year={y} current={y.year === currentYear} maxMonth={maxMonth} />
-          ))}
+      <div className="mb-12">
+        <div className="eyebrow mb-4">Årsjämförelse</div>
+        <div className="grid grid-cols-3 gap-6">
+          <YearCard stat={stat2024} />
+          <YearCard stat={stat2025} />
+          <YearCard stat={stat2026} />
         </div>
-      </section>
+      </div>
 
-      <section className="mb-12">
-        <h2 className="font-serif text-2xl mb-1">Månad för månad, tre år bakåt</h2>
-        <p className="text-ink-muted text-[13px] mb-5">Tre staplar per månad: 2024 (ljus), 2025 (grå), 2026 (terrakotta). Hovra för exakta belopp.</p>
-        <div className="bg-white border border-line-soft rounded-sm p-7">
-          <CompareChart years={allYears} maxMonth={maxMonth} />
-          <div className="flex gap-5 mt-5 text-[12px] text-ink-muted">
-            <Legend color="#d9d2c4" label="2024" />
-            <Legend color="#a69f92" label="2025" />
-            <Legend color="#b5744d" label="2026" />
-          </div>
-        </div>
-      </section>
+      <div className="mb-12">
+        <div className="eyebrow mb-4">Månadsfördelning</div>
+        <CompareChart stat2024={stat2024} stat2025={stat2025} stat2026={stat2026} />
+      </div>
 
-      <section className="mb-12">
-        <h2 className="font-serif text-2xl mb-1">Fördelning per fotograferingstyp · {currentYear}</h2>
-        <p className="text-ink-muted text-[13px] mb-5">Bokad omsättning i år, grupperad per typ.</p>
+      <div className="mb-12">
+        <div className="eyebrow mb-4">Per fotograferingstyp {valtAr}</div>
         <div className="bg-white border border-line-soft rounded-sm overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr>
-                <Th right={false}>Typ</Th>
-                <Th right={true}>Antal</Th>
-                <Th right={true}>Snittpris</Th>
-                <Th right={true}>Total</Th>
+          <table className="w-full text-sm">
+            <thead className="bg-bg-subtle">
+              <tr className="text-left text-[11px] uppercase tracking-wider text-ink-muted">
+                <th className="px-5 py-3 font-medium">Typ</th>
+                <th className="px-5 py-3 font-medium text-right">Antal</th>
+                <th className="px-5 py-3 font-medium text-right">Snittpris</th>
+                <th className="px-5 py-3 font-medium text-right">Total</th>
               </tr>
             </thead>
             <tbody>
               {typArr.length === 0 ? (
-                <tr><td colSpan={4} className="p-10 text-center text-ink-faint">Inga bokningar i år.</td></tr>
-              ) : typArr.map(t => (
-                <tr key={t.namn} className="border-b border-line-soft last:border-0">
-                  <td className="font-serif text-[17px] py-4 px-5">{t.namn}</td>
-                  <td className="text-right font-mono text-[13px] py-4 px-5">{t.count}</td>
-                  <td className="text-right font-mono text-[13px] py-4 px-5">{t.avg.toLocaleString('sv-SE')} kr</td>
-                  <td className="text-right font-mono text-[13px] py-4 px-5"><strong>{t.total.toLocaleString('sv-SE')} kr</strong></td>
-                </tr>
-              ))}
+                <tr><td colSpan={4} className="px-5 py-8 text-center text-ink-muted">Ingen data för {valtAr}</td></tr>
+              ) : typArr.map(function(t, i) {
+                return (
+                  <tr key={i} className="border-t border-line-soft">
+                    <td className="px-5 py-3.5 font-medium">{t.namn}</td>
+                    <td className="px-5 py-3.5 text-right tabular-nums">{t.count}</td>
+                    <td className="px-5 py-3.5 text-right tabular-nums text-ink-muted">{t.avg.toLocaleString('sv-SE')} kr</td>
+                    <td className="px-5 py-3.5 text-right tabular-nums font-medium">{t.total.toLocaleString('sv-SE')} kr</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
-      </section>
+      </div>
     </>
   );
 }
 
-function Kpi(props) {
+function YearPill(props: { ar: number; aktiv: boolean }) {
+  const aktiv = props.aktiv;
+  const ar = props.ar;
+  return (
+    <a
+      href={`/admin/ekonomi?ar=${ar}`}
+      className={`px-4 py-2 text-sm rounded-sm transition-colors ${aktiv ? 'bg-ink text-bg' : 'bg-white border border-line-soft text-ink hover:border-line'}`}
+    >
+      {ar}
+    </a>
+  );
+}
+
+function Kpi(props: { label: string; value: string; sub: string }) {
   return (
     <div className="bg-white border border-line-soft rounded-sm px-7 py-6">
       <div className="eyebrow mb-3">{props.label}</div>
-      <div className="font-serif text-[36px] leading-none tracking-tight">{props.value}</div>
+      <div className="font-serif text-[38px] leading-none tracking-tight">{props.value}</div>
       <div className="text-[12px] text-ink-muted mt-1.5">{props.sub}</div>
     </div>
   );
 }
 
-function YearCard(props) {
-  const y = props.year;
-  const isCurrent = !!props.current;
+function YearCard(props: { stat: ArStat }) {
+  const stat = props.stat;
+  let max = 0;
+  for (let i = 0; i < stat.manader.length; i++) {
+    if (stat.manader[i].total > max) max = stat.manader[i].total;
+  }
   return (
-    <div className={'border rounded-sm p-6 bg-white ' + (isCurrent ? 'border-accent' : 'border-line-soft')}>
-      <div className="flex justify-between items-baseline mb-3">
-        <span className="eyebrow">{y.year} {isCurrent ? '· hittills' : '· helår'}</span>
-        {isCurrent && <span className="font-mono text-[9px] tracking-[0.14em] uppercase text-accent">aktuellt</span>}
+    <div className="bg-white border border-line-soft rounded-sm p-6">
+      <div className="flex justify-between items-baseline mb-1">
+        <div className="font-serif text-2xl">{stat.ar}</div>
+        <div className="text-[11px] text-ink-muted uppercase tracking-wider">{stat.count} bokningar</div>
       </div>
-      <div className="font-serif text-[28px] font-light leading-none">{y.total.toLocaleString('sv-SE')} kr</div>
-      <div className="text-[12px] text-ink-muted mt-2">{y.count} bokningar · snitt {y.avg.toLocaleString('sv-SE')} kr</div>
-      <div className="text-[11px] text-ink-faint mt-1">Inkommet: {y.paid.toLocaleString('sv-SE')} kr</div>
-      <div className="flex gap-1 items-end h-[60px] mt-5">
-        {y.monthly.map((v, i) => (
-          <div key={i} className="flex-1 flex flex-col items-center justify-end gap-1.5" title={MONTH_SHORT[i] + ': ' + v.toLocaleString('sv-SE') + ' kr'}>
-            <div className={'w-full rounded-sm ' + (isCurrent ? 'bg-accent' : 'bg-ink-faint')} style={{ height: ((v / Math.max(1, props.maxMonth)) * 50) + 'px', minHeight: v > 0 ? '2px' : '0' }} />
-          </div>
-        ))}
+      <div className="font-serif text-[28px] tracking-tight mb-1">{stat.total.toLocaleString('sv-SE')} kr</div>
+      <div className="text-[12px] text-ink-muted mb-5">
+        {stat.paid.toLocaleString('sv-SE')} kr inkommit · {stat.foretag} företag · {stat.privat} privat
       </div>
-      <div className="flex gap-1 mt-1">
-        {MONTH_SHORT.map(m => <div key={m} className="flex-1 text-center font-mono text-[8.5px] uppercase tracking-[0.1em] text-ink-faint">{m.charAt(0)}</div>)}
-      </div>
-    </div>
-  );
-}
-
-function CompareChart(props) {
-  const max = Math.max(1, props.maxMonth);
-  return (
-    <div className="grid grid-cols-12 gap-3 items-end" style={{ height: '220px' }}>
-      {MONTH_SHORT.map((m, i) => {
-        const v24 = props.years[0].monthly[i];
-        const v25 = props.years[1].monthly[i];
-        const v26 = props.years[2].monthly[i];
-        return (
-          <div key={m} className="flex flex-col items-center gap-1.5 h-full">
-            <div className="flex gap-1 w-full items-end justify-center" style={{ height: '180px' }}>
-              <Bar value={v24} max={max} color="#d9d2c4" label={'2024 · ' + m + ': ' + v24.toLocaleString('sv-SE') + ' kr'} />
-              <Bar value={v25} max={max} color="#a69f92" label={'2025 · ' + m + ': ' + v25.toLocaleString('sv-SE') + ' kr'} />
-              <Bar value={v26} max={max} color="#b5744d" label={'2026 · ' + m + ': ' + v26.toLocaleString('sv-SE') + ' kr'} />
+      <div className="flex items-end gap-1 h-20">
+        {stat.manader.map(function(m, i) {
+          const h = max > 0 ? Math.round((m.total / max) * 100) : 0;
+          return (
+            <div key={i} className="flex-1 flex flex-col items-center justify-end" title={`${MANADER[i]}: ${m.total.toLocaleString('sv-SE')} kr`}>
+              <div className="w-full bg-accent/70 rounded-t-sm" style={{ height: `${h}%`, minHeight: m.total > 0 ? '2px' : '0' }} />
             </div>
-            <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-faint">{m}</div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
+      <div className="flex justify-between text-[10px] text-ink-faint mt-1.5 px-0.5">
+        <span>jan</span><span>apr</span><span>jul</span><span>okt</span><span>dec</span>
+      </div>
     </div>
   );
 }
 
-function Bar(props) {
-  const h = (props.value / props.max) * 180;
+function CompareChart(props: { stat2024: ArStat; stat2025: ArStat; stat2026: ArStat }) {
+  let max = 0;
+  const alla = [props.stat2024, props.stat2025, props.stat2026];
+  for (let a = 0; a < alla.length; a++) {
+    for (let i = 0; i < 12; i++) {
+      if (alla[a].manader[i].total > max) max = alla[a].manader[i].total;
+    }
+  }
   return (
-    <div title={props.label} className="flex-1 rounded-sm cursor-default transition-opacity hover:opacity-70" style={{ height: h + 'px', minHeight: props.value > 0 ? '2px' : '0', backgroundColor: props.color }} />
-  );
-}
-
-function Legend(props) {
-  return (
-    <div className="flex items-center gap-2">
-      <span className="w-3 h-3 rounded-sm inline-block" style={{ backgroundColor: props.color }}></span>
-      {props.label}
+    <div className="bg-white border border-line-soft rounded-sm p-6">
+      <div className="flex gap-6 mb-5 text-xs">
+        <Legend color="bg-ink-faint" label="2024" />
+        <Legend color="bg-sage" label="2025" />
+        <Legend color="bg-accent" label="2026" />
+      </div>
+      <div className="flex items-end gap-2 h-48">
+        {MANADER.map(function(namn, m) {
+          const v24 = props.stat2024.manader[m].total;
+          const v25 = props.stat2025.manader[m].total;
+          const v26 = props.stat2026.manader[m].total;
+          const h24 = max > 0 ? (v24 / max) * 100 : 0;
+          const h25 = max > 0 ? (v25 / max) * 100 : 0;
+          const h26 = max > 0 ? (v26 / max) * 100 : 0;
+          return (
+            <div key={m} className="flex-1 flex flex-col items-center">
+              <div className="flex items-end gap-0.5 w-full h-full justify-center">
+                <div className="w-1/3 bg-ink-faint rounded-t-sm" style={{ height: `${h24}%`, minHeight: v24 > 0 ? '2px' : '0' }} title={`2024: ${v24.toLocaleString('sv-SE')} kr`} />
+                <div className="w-1/3 bg-sage rounded-t-sm" style={{ height: `${h25}%`, minHeight: v25 > 0 ? '2px' : '0' }} title={`2025: ${v25.toLocaleString('sv-SE')} kr`} />
+                <div className="w-1/3 bg-accent rounded-t-sm" style={{ height: `${h26}%`, minHeight: v26 > 0 ? '2px' : '0' }} title={`2026: ${v26.toLocaleString('sv-SE')} kr`} />
+              </div>
+              <div className="text-[10px] text-ink-faint mt-1.5">{namn}</div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
-function Th(props) {
-  const right = !!props.right;
+function Legend(props: { color: string; label: string }) {
   return (
-    <th className={'font-mono text-[10px] tracking-[0.16em] uppercase text-ink-faint py-3.5 px-5 border-b border-line bg-bg font-medium ' + (right ? 'text-right' : 'text-left')}>
-      {props.children}
-    </th>
+    <div className="flex items-center gap-1.5">
+      <div className={`w-3 h-3 rounded-sm ${props.color}`} />
+      <span className="text-ink-muted">{props.label}</span>
+    </div>
   );
 }
