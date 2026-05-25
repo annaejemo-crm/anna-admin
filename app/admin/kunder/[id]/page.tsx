@@ -1,84 +1,126 @@
 import { createClient } from '@/lib/supabase/server';
 import { StatusPill } from '@/components/StatusPill';
 import { notFound } from 'next/navigation';
+import Link from 'next/link';
 import { togglePaid, setBildpaket } from '../actions';
 
-export default async function KundDetaljPage({ params }) {
-  const { id } = await params;
+export default async function KundDetaljPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
+  const id = params.id;
   const supabase = await createClient();
 
-  const { data: kund } = await supabase.from('kunder').select('*').eq('id', id).single();
+  const { data: kund } = await supabase
+    .from('kunder')
+    .select('*')
+    .eq('id', id)
+    .single();
+
   if (!kund) notFound();
 
-  const { data: bokningar } = await supabase
+  const { data: bokningarRaw } = await supabase
     .from('bokningar')
-    .select('*, fotograferingstyp:fotograferingstyper(*)')
+    .select('*, fotograferingstyp:fotograferingstyper(namn)')
     .eq('kund_id', id)
     .order('datum', { ascending: false });
 
-  const { data: paketData } = await supabase.from('bildpaket').select('*').eq('aktiv', true).order('ordning', { ascending: true });
-  const paketList = paketData || [];
+  const { data: paketRaw } = await supabase
+    .from('bildpaket')
+    .select('id, namn, pris_kr')
+    .order('ordning');
 
-  const bs = bokningar || [];
+  const bokningar = bokningarRaw || [];
+  const paket = paketRaw || [];
 
-  const totals = bs.reduce((acc, b) => {
-    const a = b.bokningsavgift_kr || 0;
-    const p = b.bildpaket_kr || 0;
-    return {
-      avgift: acc.avgift + a,
-      avgiftPaid: acc.avgiftPaid + (b.bokningsavgift_betald ? a : 0),
-      paket: acc.paket + p,
-      paketPaid: acc.paketPaid + (b.bildpaket_betald ? p : 0),
-    };
-  }, { avgift: 0, avgiftPaid: 0, paket: 0, paketPaid: 0 });
+  let sumAvgift = 0;
+  let sumAvgiftPaid = 0;
+  let sumPaket = 0;
+  let sumPaketPaid = 0;
+  for (let i = 0; i < bokningar.length; i++) {
+    const b: any = bokningar[i];
+    sumAvgift += b.bokningsavgift_kr || 0;
+    if (b.bokningsavgift_betald) sumAvgiftPaid += b.bokningsavgift_kr || 0;
+    sumPaket += b.bildpaket_kr || 0;
+    if (b.bildpaket_betald) sumPaketPaid += b.bildpaket_kr || 0;
+  }
+  const total = sumAvgift + sumPaket;
+  const totalPaid = sumAvgiftPaid + sumPaketPaid;
 
-  const total = totals.avgift + totals.paket;
-  const totalPaid = totals.avgiftPaid + totals.paketPaid;
+  const kundNamn = kund.foretagsnamn || `${kund.fornamn} ${kund.efternamn || ''}`.trim();
 
   return (
     <>
       <div className="mb-10 pb-6 border-b border-line">
-        <div className="eyebrow mb-1.5">{kund.foretagsnamn ? 'Företagskund' : 'Privatkund'}</div>
-        <h1 className="font-serif text-[42px] font-light leading-tight">
-          {kund.foretagsnamn || `${kund.fornamn} ${kund.efternamn || ''}`.trim()}
-        </h1>
-        <div className="mt-3 flex gap-6 text-sm text-ink-muted">
-          {kund.email && <span>{kund.email}</span>}
-          {kund.telefon && <span>{kund.telefon}</span>}
-          <span>{bs.length} bokning{bs.length === 1 ? '' : 'ar'}</span>
+        <div className="flex justify-between items-start">
+          <div>
+            <div className="eyebrow mb-1.5">{kund.foretagsnamn ? 'Företagskund' : 'Privatkund'}</div>
+            <h1 className="font-serif text-[42px] font-light leading-tight">{kundNamn}</h1>
+            <div className="mt-3 text-sm text-ink-muted">{bokningar.length} bokningar</div>
+            <div className="mt-2 flex gap-6 text-sm text-ink-muted">
+              {kund.email && <span>{kund.email}</span>}
+              {kund.telefon && <span>{kund.telefon}</span>}
+            </div>
+          </div>
+          <Link
+            href={`/admin/kunder/${kund.id}/redigera`}
+            className="text-sm px-4 py-2 border border-line-soft rounded-sm hover:border-ink transition-colors"
+          >
+            Redigera kund
+          </Link>
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4 mb-10">
-        <SumCard label="Bokningsavgifter" total={totals.avgift} paid={totals.avgiftPaid} primary={false} />
-        <SumCard label="Bildpaket" total={totals.paket} paid={totals.paketPaid} primary={false} />
-        <SumCard label="Totalt" total={total} paid={totalPaid} primary={true} />
+      <div className="grid grid-cols-3 gap-6 mb-12">
+        <SumCard label="Bokningsavgifter" total={sumAvgift} inkommet={sumAvgiftPaid} />
+        <SumCard label="Bildpaket" total={sumPaket} inkommet={sumPaketPaid} />
+        <SumCard label="Totalt" total={total} inkommet={totalPaid} />
       </div>
 
-      <h2 className="font-serif text-2xl mb-1">Bokningar</h2>
-      <p className="text-[11.5px] text-ink-muted mb-4">Klicka på prickarna för att toggla betald-status. Välj bildpaket från dropdown.</p>
+      <div className="flex justify-between items-end mb-4">
+        <h2 className="font-serif text-2xl">Bokningar</h2>
+        <p className="text-xs text-ink-muted">Klicka på prickarna för att toggla betald-status. Klicka på Redigera för att ändra datum, plats eller pris.</p>
+      </div>
+
       <div className="bg-white border border-line-soft rounded-sm overflow-hidden">
-        <table className="w-full">
-          <thead>
-            <tr>
-              <Th right={false}>Datum</Th><Th right={false}>Typ</Th><Th right={false}>Plats</Th><Th right={false}>Status</Th>
-              <Th right={true}>Avgift</Th><Th right={false}>Bildpaket</Th><Th right={true}>Totalt</Th>
+        <table className="w-full text-sm">
+          <thead className="bg-bg-subtle">
+            <tr className="text-left text-[11px] uppercase tracking-wider text-ink-muted">
+              <th className="px-4 py-3 font-medium">Datum</th>
+              <th className="px-4 py-3 font-medium">Typ</th>
+              <th className="px-4 py-3 font-medium">Plats</th>
+              <th className="px-4 py-3 font-medium">Status</th>
+              <th className="px-4 py-3 font-medium text-right">Avgift</th>
+              <th className="px-4 py-3 font-medium">Bildpaket</th>
+              <th className="px-4 py-3 font-medium text-right">Totalt</th>
+              <th className="px-4 py-3 font-medium text-right" />
             </tr>
           </thead>
           <tbody>
-            {bs.length === 0 ? (
-              <tr><td colSpan={7} className="p-10 text-center text-ink-faint">Inga bokningar än.</td></tr>
-            ) : bs.map(b => {
-              const tot = (b.bokningsavgift_kr||0) + (b.bildpaket_kr||0);
+            {bokningar.length === 0 ? (
+              <tr><td colSpan={8} className="px-4 py-10 text-center text-ink-faint">Inga bokningar för denna kund.</td></tr>
+            ) : bokningar.map(function(b: any) {
               return (
-                <tr key={b.id} className="border-b border-line-soft last:border-0">
-                  <td className="font-mono text-[12px] text-ink-muted py-4 px-5">{b.datum || '–'}</td>
-                  <td className="py-4 px-5 font-serif text-[15px]">{b.fotograferingstyp?.namn || 'Fotografering'}</td>
-                  <td className="py-4 px-5 text-[13.5px]">{b.plats || '–'}</td>
-                  <td className="py-4 px-5"><StatusPill status={b.status} /></td>
-                  <td className="text-right py-4 px-5"><PaidToggle bookingId={b.id} kundId={id} kind="avgift" amount={b.bokningsavgift_kr} paid={b.bokningsavgift_betald} /></td>
-                  <td className="py-4 px-5"><BildpaketCell b={b} kundId={id} paketList={paketList} /></td>
-                  <td className="font-mono text-[12.5px] text-right py-4 px-5">{tot.toLocaleString('sv-SE')} kr</td>
+                <tr key={b.id} className="border-t border-line-soft hover:bg-bg-subtle/40">
+                  <td className="px-4 py-3.5 font-mono text-[12px] text-ink-muted">{b.datum || 'inget datum'}</td>
+                  <td className="px-4 py-3.5">{b.fotograferingstyp?.namn || ''}</td>
+                  <td className="px-4 py-3.5 text-ink-muted">{b.plats || ''}</td>
+                  <td className="px-4 py-3.5"><StatusPill status={b.status} /></td>
+                  <td className="px-4 py-3.5 text-right">
+                    <PaidCell id={b.id} kundId={kund.id} kind="avgift" belopp={b.bokningsavgift_kr || 0} betald={!!b.bokningsavgift_betald} />
+                  </td>
+                  <td className="px-4 py-3.5">
+                    <BildpaketCell bokning={b} kundId={kund.id} paketLista={paket} />
+                  </td>
+                  <td className="px-4 py-3.5 text-right font-mono text-[12.5px]">
+                    {((b.bokningsavgift_kr || 0) + (b.bildpaket_kr || 0)).toLocaleString('sv-SE')} kr
+                  </td>
+                  <td className="px-4 py-3.5 text-right">
+                    <Link
+                      href={`/admin/bokningar/${b.id}/redigera`}
+                      className="text-[12px] text-ink-muted hover:text-ink underline underline-offset-2"
+                    >
+                      Redigera
+                    </Link>
+                  </td>
                 </tr>
               );
             })}
@@ -89,74 +131,48 @@ export default async function KundDetaljPage({ params }) {
   );
 }
 
-function BildpaketCell(props) {
-  const b = props.b;
-  const paketList = props.paketList;
-  if (b.bildpaket_kr) {
-    return (
-      <div className="flex items-center gap-2 justify-between">
-        <div>
-          <PaidToggle bookingId={b.id} kundId={props.kundId} kind="paket" amount={b.bildpaket_kr} paid={b.bildpaket_betald} />
-          {b.bildpaket_namn && <div className="text-[10.5px] text-ink-faint mt-0.5 px-2">{b.bildpaket_namn}</div>}
-        </div>
-        <form action={setBildpaket} className="inline-block">
-          <input type="hidden" name="id" value={b.id} />
-          <input type="hidden" name="kundId" value={props.kundId} />
-          <input type="hidden" name="paketId" value="clear" />
-          <button type="submit" title="Rensa paketval" className="text-[10px] text-ink-faint hover:text-danger px-1">✕</button>
-        </form>
-      </div>
-    );
-  }
+function SumCard(props: { label: string; total: number; inkommet: number }) {
   return (
-    <form action={setBildpaket} className="flex gap-1 items-center">
-      <input type="hidden" name="id" value={b.id} />
-      <input type="hidden" name="kundId" value={props.kundId} />
-      <select name="paketId" required className="bg-bg border border-line rounded-sm text-[11.5px] px-2 py-1 flex-1 focus:outline-none focus:border-ink-faint">
-        <option value="">Välj paket…</option>
-        {paketList.map(p => <option key={p.id} value={p.id}>{p.namn} ({p.pris_kr.toLocaleString('sv-SE')} kr)</option>)}
-      </select>
-      <button type="submit" className="text-[11px] px-2 py-1 bg-ink text-bg rounded-sm hover:bg-accent">Sätt</button>
-    </form>
-  );
-}
-
-function SumCard(props) {
-  const { label, total, paid } = props;
-  const primary = !!props.primary;
-  const remaining = total - paid;
-  return (
-    <div className={`border rounded-sm p-5 ${primary ? 'bg-ink text-bg border-ink' : 'bg-white border-line-soft'}`}>
-      <div className={`eyebrow mb-2 ${primary ? 'opacity-70' : ''}`}>{label}</div>
-      <div className="font-serif text-[28px] leading-none mb-1">{total.toLocaleString('sv-SE')} kr</div>
-      <div className={`text-[11.5px] mt-2 ${primary ? 'opacity-80' : 'text-ink-muted'}`}>
-        Inkommet: <strong>{paid.toLocaleString('sv-SE')} kr</strong>
-        {remaining > 0 && (<><br />Återstår: <strong>{remaining.toLocaleString('sv-SE')} kr</strong></>)}
-      </div>
+    <div className="bg-white border border-line-soft rounded-sm px-7 py-6">
+      <div className="eyebrow mb-3">{props.label}</div>
+      <div className="font-serif text-[34px] leading-none tracking-tight">{props.total.toLocaleString('sv-SE')} kr</div>
+      <div className="text-[12px] text-ink-muted mt-1.5">Inkommet: {props.inkommet.toLocaleString('sv-SE')} kr</div>
     </div>
   );
 }
 
-function PaidToggle(props) {
-  if (!props.amount) return <span className="text-ink-faint text-[12.5px]">–</span>;
+function PaidCell(props: { id: string; kundId: string; kind: 'avgift' | 'paket'; belopp: number; betald: boolean }) {
+  if (props.belopp === 0) return <span className="text-ink-faint text-[12px]">—</span>;
+  const dotColor = props.betald ? 'bg-positive' : 'bg-line';
   return (
-    <form action={togglePaid} className="inline-block">
-      <input type="hidden" name="id" value={props.bookingId} />
+    <form action={togglePaid} className="inline-flex items-center gap-2 justify-end">
+      <input type="hidden" name="id" value={props.id} />
       <input type="hidden" name="kind" value={props.kind} />
       <input type="hidden" name="kundId" value={props.kundId} />
-      <button type="submit" className={`font-mono text-[12.5px] inline-flex items-center gap-1.5 px-2 py-1 rounded hover:bg-bg-subtle transition-colors ${props.paid ? 'text-positive' : 'text-ink-muted'}`}>
-        <span className={`w-1.5 h-1.5 rounded-full inline-block ${props.paid ? 'bg-positive' : 'bg-line'}`}></span>
-        {props.amount.toLocaleString('sv-SE')} kr
-      </button>
+      <span className="font-mono text-[12.5px]">{props.belopp.toLocaleString('sv-SE')} kr</span>
+      <button type="submit" title={props.betald ? 'Betald (klicka för att avmarkera)' : 'Ej betald (klicka för att markera)'} className={`w-2.5 h-2.5 rounded-full ${dotColor} hover:scale-125 transition-transform`} />
     </form>
   );
 }
 
-function Th(props) {
-  const right = !!props.right;
+function BildpaketCell(props: { bokning: any; kundId: string; paketLista: any[] }) {
+  const b = props.bokning;
+  if (b.bildpaket_namn && b.bildpaket_kr) {
+    return (
+      <PaidCell id={b.id} kundId={props.kundId} kind="paket" belopp={b.bildpaket_kr} betald={!!b.bildpaket_betald} />
+    );
+  }
   return (
-    <th className={`font-mono text-[10px] tracking-[0.16em] uppercase text-ink-faint py-3.5 px-5 border-b border-line bg-bg font-medium ${right ? 'text-right' : 'text-left'}`}>
-      {props.children}
-    </th>
+    <form action={setBildpaket} className="flex gap-2 items-center">
+      <input type="hidden" name="id" value={b.id} />
+      <input type="hidden" name="kundId" value={props.kundId} />
+      <select name="paketId" defaultValue="" className="px-2 py-1 text-[12px] bg-white border border-line-soft rounded-sm">
+        <option value="">Välj paket…</option>
+        {props.paketLista.map(function(p: any) {
+          return <option key={p.id} value={p.id}>{p.namn} ({p.pris_kr.toLocaleString('sv-SE')} kr)</option>;
+        })}
+      </select>
+      <button type="submit" className="text-[11px] px-2 py-1 bg-ink text-bg rounded-sm">Sätt</button>
+    </form>
   );
 }
