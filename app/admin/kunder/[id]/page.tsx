@@ -46,9 +46,9 @@ export default async function KundDetaljPage({ params }) {
       </div>
 
       <div className="grid grid-cols-3 gap-4 mb-10">
-        <SumCard label="Bokningsavgifter" total={totals.avgift} paid={totals.avgiftPaid} />
-        <SumCard label="Bildpaket" total={totals.paket} paid={totals.paketPaid} />
-        <SumCard label="Totalt" total={total} paid={totalPaid} primary />
+        <SumCard label="Bokningsavgifter" total={totals.avgift} paid={totals.avgiftPaid} primary={false} />
+        <SumCard label="Bildpaket" total={totals.paket} paid={totals.paketPaid} primary={false} />
+        <SumCard label="Totalt" total={total} paid={totalPaid} primary={true} />
       </div>
 
       <h2 className="font-serif text-2xl mb-4">Bokningar</h2>
@@ -84,7 +84,9 @@ export default async function KundDetaljPage({ params }) {
   );
 }
 
-function SumCard({ label, total, paid, primary }) {
+function SumCard(props) {
+  const { label, total, paid } = props;
+  const primary = !!props.primary;
   const remaining = total - paid;
   return (
     <div className={`border rounded-sm p-5 ${primary ? 'bg-ink text-bg border-ink' : 'bg-white border-line-soft'}`}>
@@ -98,7 +100,9 @@ function SumCard({ label, total, paid, primary }) {
   );
 }
 
-function PriceCell({ amount, paid }) {
+function PriceCell(props) {
+  const amount = props.amount;
+  const paid = !!props.paid;
   if (!amount) return <span className="text-ink-faint text-[12.5px]">–</span>;
   return (
     <span className={`font-mono text-[12.5px] inline-flex items-center gap-1.5 ${paid ? 'text-positive' : 'text-ink-muted'}`}>
@@ -108,10 +112,11 @@ function PriceCell({ amount, paid }) {
   );
 }
 
-function Th({ children, right }) {
+function Th(props) {
+  const right = !!props.right;
   return (
     <th className={`font-mono text-[10px] tracking-[0.16em] uppercase text-ink-faint py-3.5 px-5 border-b border-line bg-bg font-medium ${right ? 'text-right' : 'text-left'}`}>
-      {children}
+      {props.children}
     </th>
   );
 }
