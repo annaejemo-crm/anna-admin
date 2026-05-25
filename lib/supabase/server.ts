@@ -1,13 +1,14 @@
-/* Supabase-klient för användning i Server Components, Server Actions och Route Handlers. */
+/* Supabase-klient för Server Components, Server Actions och Route Handlers. */
 import { createServerClient } from '@supabase/ssr';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 
 export async function createClient() {
   const cookieStore = await cookies();
 
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
       cookies: {
         getAll() {
@@ -19,7 +20,7 @@ export async function createClient() {
               cookieStore.set(name, value, options),
             );
           } catch {
-            /* Anrop från en Server Component – ignoreras (middleware sköter cookies). */
+            /* ignore */
           }
         },
       },
@@ -27,12 +28,10 @@ export async function createClient() {
   );
 }
 
-/** Admin-klient med service role-nyckel. Använd ENBART i serverkod. */
 export function createServiceClient() {
-  const { createClient: createSupabaseClient } = require('@supabase/supabase-js');
   return createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
     { auth: { autoRefreshToken: false, persistSession: false } },
   );
 }
