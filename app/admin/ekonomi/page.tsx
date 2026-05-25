@@ -52,10 +52,11 @@ export default async function EkonomiPage() {
     typStats[t].count++;
     typStats[t].total += (b.bokningsavgift_kr||0) + (b.bildpaket_kr||0);
   }
-  const typArr = Object.entries(typStats).map(([namn, s]) => ({
-    namn, count: s.count, total: s.total,
-    avg: s.count > 0 ? Math.round(s.total/s.count) : 0
-  })).sort((a,b) => b.total - a.total);
+  const typArr = Object.entries(typStats).map(function(entry){
+    const namn = entry[0];
+    const s = entry[1];
+    return { namn: namn, count: s.count, total: s.total, avg: s.count > 0 ? Math.round(s.total/s.count) : 0 };
+  }).sort(function(a,b){ return b.total - a.total; });
 
   const current = y2026;
   const remaining = current.total - current.paid;
