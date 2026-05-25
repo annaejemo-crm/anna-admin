@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
 import { StatusPill } from '@/components/StatusPill';
+import { togglePaid } from './actions';
 
 const MONTH_NAMES = ['januari', 'februari', 'mars', 'april', 'maj', 'juni', 'juli', 'augusti', 'september', 'oktober', 'november', 'december'];
 
@@ -66,6 +67,8 @@ export default async function KunderPage({ searchParams }) {
         </div>
       </div>
 
+      <p className="text-[11.5px] text-ink-muted mb-3">Klicka på pricken vid avgift eller bildpaket för att toggla betald-status.</p>
+
       <div className="bg-white border border-line-soft rounded-sm overflow-hidden">
         <table className="w-full">
           <thead>
@@ -114,8 +117,8 @@ export default async function KunderPage({ searchParams }) {
                         <td className="py-4 px-5 text-[13.5px]">{b.fotograferingstyp?.namn || '–'}</td>
                         <td className="py-4 px-5 text-[13.5px]">{b.plats || '–'}</td>
                         <td className="py-4 px-5"><StatusPill status={b.status} /></td>
-                        <td className="py-4 px-5 text-right"><PriceCell amount={b.bokningsavgift_kr} paid={b.bokningsavgift_betald} /></td>
-                        <td className="py-4 px-5 text-right"><PriceCell amount={b.bildpaket_kr} paid={b.bildpaket_betald} /></td>
+                        <td className="py-4 px-5 text-right"><PaidToggle id={b.id} kind="avgift" amount={b.bokningsavgift_kr} paid={b.bokningsavgift_betald} /></td>
+                        <td className="py-4 px-5 text-right"><PaidToggle id={b.id} kind="paket" amount={b.bildpaket_kr} paid={b.bildpaket_betald} /></td>
                         <td className="font-mono text-[12.5px] text-right py-4 px-5">{tot > 0 ? `${tot.toLocaleString('sv-SE')} kr` : '–'}</td>
                       </tr>
                     );
@@ -130,15 +133,17 @@ export default async function KunderPage({ searchParams }) {
   );
 }
 
-function PriceCell(props) {
-  const amount = props.amount;
-  const paid = !!props.paid;
-  if (!amount) return <span className="text-ink-faint text-[12.5px]">–</span>;
+function PaidToggle(props) {
+  if (!props.amount) return <span className="text-ink-faint text-[12.5px]">–</span>;
   return (
-    <span className={`font-mono text-[12.5px] inline-flex items-center gap-1.5 ${paid ? 'text-positive' : 'text-ink-muted'}`}>
-      <span className={`w-1.5 h-1.5 rounded-full inline-block ${paid ? 'bg-positive' : 'bg-line'}`}></span>
-      {amount.toLocaleString('sv-SE')} kr
-    </span>
+    <form action={togglePaid} className="inline-block">
+      <input type="hidden" name="id" value={props.id} />
+      <input type="hidden" name="kind" value={props.kind} />
+      <button type="submit" title={props.paid ? 'Markerad som betald · klicka för att avmarkera' : 'Ej betald · klicka för att markera som betald'} className={`font-mono text-[12.5px] inline-flex items-center gap-1.5 px-2 py-1 rounded hover:bg-bg-subtle transition-colors ${props.paid ? 'text-positive' : 'text-ink-muted'}`}>
+        <span className={`w-1.5 h-1.5 rounded-full inline-block ${props.paid ? 'bg-positive' : 'bg-line'}`}></span>
+        {props.amount.toLocaleString('sv-SE')} kr
+      </button>
+    </form>
   );
 }
 
