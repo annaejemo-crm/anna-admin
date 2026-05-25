@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-playfair: 'Playfair Display', Georgia, serif;
+    --font-inter: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  html, body {
+    background: #f5f2ed;
+    color: #2a2520;
+    font-family: var(--font-inter);
+    font-size: 14px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-playfair);
+    font-weight: 400;
+    letter-spacing: -0.005em;
+  }
+}
+
+@layer components {
+  .eyebrow {
+    @apply font-mono text-[10px] tracking-[0.22em] uppercase text-ink-faint;
+  }
+
+  .pill {
+    @apply inline-flex items-center gap-1.5 font-mono text-[10px] tracking-[0.12em] uppercase px-2.5 py-1 rounded-xl font-medium;
+  }
+
+  .pill::before {
+    content: '';
+    @apply w-1.5 h-1.5 rounded-full bg-current inline-block;
+  }
+
+  .btn {
+    @apply bg-ink text-bg px-4 py-2.5 rounded-sm text-[12.5px] font-medium tracking-[0.02em] transition-colors hover:bg-accent;
+  }
+
+  .btn-ghost {
+    @apply bg-transparent text-ink-muted border border-line hover:bg-bg-subtle hover:text-ink hover:border-ink-faint;
+  }
+}
