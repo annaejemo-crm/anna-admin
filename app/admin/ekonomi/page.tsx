@@ -7,7 +7,10 @@ export default async function EkonomiPage() {
 
   const { data: bsRaw } = await supabase
     .from('bokningar')
-    .select('datum, bokningsavgift_kr, bildpaket_kr, bokningsavgift_betald, bildpaket_betald, fotograferingstyp:fotograferingstyper(namn), kund:kunder(foretagsnamn)');
+    .select('datum, bokningsavgift_kr, bildpaket_kr, bokningsavgift_betald, bildpaket_betald, kund_id, fotograferingstyp:fotograferingstyper(namn)');
+
+  const { data: kunderRaw } = await supabase.from('kunder').select('id, foretagsnamn');
+  const foretagSet = new Set((kunderRaw || []).filter(k => k.foretagsnamn).map(k => k.id));
 
   const bs = bsRaw || [];
   const currentYear = new Date().getFullYear();
@@ -15,20 +18,18 @@ export default async function EkonomiPage() {
   function statsFor(year) {
     const yearBs = bs.filter(b => b.datum && new Date(b.datum).getFullYear() === year);
     const monthly = Array(12).fill(0);
-    const monthlyPaid = Array(12).fill(0);
     let total = 0, paid = 0, foretag = 0, privat = 0;
     for (const b of yearBs) {
       const t = (b.bokningsavgift_kr||0) + (b.bildpaket_kr||0);
       const p = (b.bokningsavgift_betald ? (b.bokningsavgift_kr||0) : 0) + (b.bildpaket_betald ? (b.bildpaket_kr||0) : 0);
       const m = new Date(b.datum).getMonth();
       monthly[m] += t;
-      monthlyPaid[m] += p;
       total += t;
       paid += p;
-      if (b.kund?.foretagsnamn) foretag++; else privat++;
+      if (foretagSet.has(b.kund_id)) foretag++; else privat++;
     }
     return {
-      year, monthly, monthlyPaid, total, paid,
+      year, monthly, total, paid,
       count: yearBs.length, foretag, privat,
       avg: yearBs.length > 0 ? Math.round(total / yearBs.length) : 0,
     };
@@ -41,16 +42,20 @@ export default async function EkonomiPage() {
 
   const maxMonth = Math.max(1, ...allYears.flatMap(y => y.monthly));
 
-  // Per typ för aktuellt år
   const typStats = {};
   for (const b of bs) {
     if (!b.datum || new Date(b.datum).getFullYear() !== currentYear) continue;
-    const t = b.fotograferingstyp?.namn || 'Okänd';
+    const ftRaw = b.fotograferingstyp;
+    const ft = Array.isArray(ftRaw) ? ftRaw[0] : ftRaw;
+    const t = (ft && ft.namn) || 'Okänd';
     if (!typStats[t]) typStats[t] = { count: 0, total: 0 };
     typStats[t].count++;
     typStats[t].total += (b.bokningsavgift_kr||0) + (b.bildpaket_kr||0);
   }
-  const typArr = Object.entries(typStats).map(([namn, s]) => ({ namn, ...s, avg: s.count > 0 ? Math.round(s.total/s.count) : 0 })).sort((a,b) => b.total - a.total);
+  const typArr = Object.entries(typStats).map(([namn, s]) => ({
+    namn, count: s.count, total: s.total,
+    avg: s.count > 0 ? Math.round(s.total/s.count) : 0
+  })).sort((a,b) => b.total - a.total);
 
   const current = y2026;
   const remaining = current.total - current.paid;
@@ -65,10 +70,10 @@ export default async function EkonomiPage() {
       </div>
 
       <div className="grid grid-cols-4 gap-6 mb-12">
-        <Kpi label="Bokad omsättning" value={`${current.total.toLocaleString('sv-SE')} kr`} sub={`${current.count} bokningar`} />
-        <Kpi label="Inkommit" value={`${current.paid.toLocaleString('sv-SE')} kr`} sub={current.total > 0 ? `${Math.round(100 * current.paid / current.total)}% av bokat` : '–'} />
-        <Kpi label="Återstår" value={`${Math.max(0, remaining).toLocaleString('sv-SE')} kr`} sub="bokat minus inkommet" />
-        <Kpi label="Snittpris per bokning" value={`${current.avg.toLocaleString('sv-SE')} kr`} sub={`${current.foretag} företag · ${current.privat} privat`} />
+        <Kpi label="Bokad omsättning" value={(current.total).toLocaleString('sv-SE') + ' kr'} sub={current.count + ' bokningar'} />
+        <Kpi label="Inkommit" value={(current.paid).toLocaleString('sv-SE') + ' kr'} sub={current.total > 0 ? Math.round(100 * current.paid / current.total) + '% av bokat' : '–'} />
+        <Kpi label="Återstår" value={(Math.max(0, remaining)).toLocaleString('sv-SE') + ' kr'} sub="bokat minus inkommet" />
+        <Kpi label="Snittpris per bokning" value={(current.avg).toLocaleString('sv-SE') + ' kr'} sub={current.foretag + ' företag · ' + current.privat + ' privat'} />
       </div>
 
       <section className="mb-12">
@@ -87,9 +92,9 @@ export default async function EkonomiPage() {
         <div className="bg-white border border-line-soft rounded-sm p-7">
           <CompareChart years={allYears} maxMonth={maxMonth} />
           <div className="flex gap-5 mt-5 text-[12px] text-ink-muted">
-            <Legend color="var(--line, #d9d2c4)" label="2024" />
-            <Legend color="var(--ink-faint, #a69f92)" label="2025" />
-            <Legend color="var(--accent, #b5744d)" label="2026" />
+            <Legend color="#d9d2c4" label="2024" />
+            <Legend color="#a69f92" label="2025" />
+            <Legend color="#b5744d" label="2026" />
           </div>
         </div>
       </section>
@@ -140,7 +145,7 @@ function YearCard(props) {
   const y = props.year;
   const isCurrent = !!props.current;
   return (
-    <div className={`border rounded-sm p-6 ${isCurrent ? 'border-accent' : 'border-line-soft'} bg-white`}>
+    <div className={'border rounded-sm p-6 bg-white ' + (isCurrent ? 'border-accent' : 'border-line-soft')}>
       <div className="flex justify-between items-baseline mb-3">
         <span className="eyebrow">{y.year} {isCurrent ? '· hittills' : '· helår'}</span>
         {isCurrent && <span className="font-mono text-[9px] tracking-[0.14em] uppercase text-accent">aktuellt</span>}
@@ -150,8 +155,8 @@ function YearCard(props) {
       <div className="text-[11px] text-ink-faint mt-1">Inkommet: {y.paid.toLocaleString('sv-SE')} kr</div>
       <div className="flex gap-1 items-end h-[60px] mt-5">
         {y.monthly.map((v, i) => (
-          <div key={i} className="flex-1 flex flex-col items-center justify-end gap-1.5" title={`${MONTH_SHORT[i]}: ${v.toLocaleString('sv-SE')} kr`}>
-            <div className={`w-full ${isCurrent ? 'bg-accent' : 'bg-ink-faint'} rounded-sm`} style={{ height: `${(v / Math.max(1, props.maxMonth)) * 50}px`, minHeight: v > 0 ? '2px' : '0' }} />
+          <div key={i} className="flex-1 flex flex-col items-center justify-end gap-1.5" title={MONTH_SHORT[i] + ': ' + v.toLocaleString('sv-SE') + ' kr'}>
+            <div className={'w-full rounded-sm ' + (isCurrent ? 'bg-accent' : 'bg-ink-faint')} style={{ height: ((v / Math.max(1, props.maxMonth)) * 50) + 'px', minHeight: v > 0 ? '2px' : '0' }} />
           </div>
         ))}
       </div>
@@ -165,32 +170,30 @@ function YearCard(props) {
 function CompareChart(props) {
   const max = Math.max(1, props.maxMonth);
   return (
-    <>
-      <div className="grid grid-cols-12 gap-3 items-end" style={{ height: '220px' }}>
-        {MONTH_SHORT.map((m, i) => {
-          const v24 = props.years[0].monthly[i];
-          const v25 = props.years[1].monthly[i];
-          const v26 = props.years[2].monthly[i];
-          return (
-            <div key={m} className="flex flex-col items-center gap-1.5 h-full">
-              <div className="flex gap-1 w-full items-end justify-center" style={{ height: '180px' }}>
-                <Bar value={v24} max={max} color="var(--line, #d9d2c4)" label={`2024 · ${m}: ${v24.toLocaleString('sv-SE')} kr`} />
-                <Bar value={v25} max={max} color="var(--ink-faint, #a69f92)" label={`2025 · ${m}: ${v25.toLocaleString('sv-SE')} kr`} />
-                <Bar value={v26} max={max} color="var(--accent, #b5744d)" label={`2026 · ${m}: ${v26.toLocaleString('sv-SE')} kr`} />
-              </div>
-              <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-faint">{m}</div>
+    <div className="grid grid-cols-12 gap-3 items-end" style={{ height: '220px' }}>
+      {MONTH_SHORT.map((m, i) => {
+        const v24 = props.years[0].monthly[i];
+        const v25 = props.years[1].monthly[i];
+        const v26 = props.years[2].monthly[i];
+        return (
+          <div key={m} className="flex flex-col items-center gap-1.5 h-full">
+            <div className="flex gap-1 w-full items-end justify-center" style={{ height: '180px' }}>
+              <Bar value={v24} max={max} color="#d9d2c4" label={'2024 · ' + m + ': ' + v24.toLocaleString('sv-SE') + ' kr'} />
+              <Bar value={v25} max={max} color="#a69f92" label={'2025 · ' + m + ': ' + v25.toLocaleString('sv-SE') + ' kr'} />
+              <Bar value={v26} max={max} color="#b5744d" label={'2026 · ' + m + ': ' + v26.toLocaleString('sv-SE') + ' kr'} />
             </div>
-          );
-        })}
-      </div>
-    </>
+            <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-faint">{m}</div>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
 function Bar(props) {
   const h = (props.value / props.max) * 180;
   return (
-    <div title={props.label} className="flex-1 rounded-sm cursor-default transition-opacity hover:opacity-70" style={{ height: `${h}px`, minHeight: props.value > 0 ? '2px' : '0', backgroundColor: props.color }} />
+    <div title={props.label} className="flex-1 rounded-sm cursor-default transition-opacity hover:opacity-70" style={{ height: h + 'px', minHeight: props.value > 0 ? '2px' : '0', backgroundColor: props.color }} />
   );
 }
 
@@ -206,7 +209,7 @@ function Legend(props) {
 function Th(props) {
   const right = !!props.right;
   return (
-    <th className={`font-mono text-[10px] tracking-[0.16em] uppercase text-ink-faint py-3.5 px-5 border-b border-line bg-bg font-medium ${right ? 'text-right' : 'text-left'}`}>
+    <th className={'font-mono text-[10px] tracking-[0.16em] uppercase text-ink-faint py-3.5 px-5 border-b border-line bg-bg font-medium ' + (right ? 'text-right' : 'text-left')}>
       {props.children}
     </th>
   );
