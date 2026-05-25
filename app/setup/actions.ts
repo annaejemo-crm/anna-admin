@@ -13,24 +13,23 @@ export async function setupPassword(formData) {
 
   const admin = createServiceClient();
 
-  /* Find user */
-  const { data: users, error: listError } = await admin.auth.admin.listUsers();
+  const { data, error: listError } = await admin.auth.admin.listUsers();
   if (listError) {
-    redirect(`/setup?error=${encodeURIComponent(listError.message)}`);
+    redirect('/setup?error=' + encodeURIComponent(listError.message));
   }
-  const user = users?.users?.find((u) => u.email === email);
+  const users = (data && data.users) || [];
+  const user = users.find((u) => u.email === email);
   if (!user) {
     redirect('/setup?error=Hittade+inte+anv%C3%A4ndaren');
   }
 
-  /* Set password */
   const { error } = await admin.auth.admin.updateUserById(user.id, {
     password,
     email_confirm: true,
   });
 
   if (error) {
-    redirect(`/setup?error=${encodeURIComponent(error.message)}`);
+    redirect('/setup?error=' + encodeURIComponent(error.message));
   }
 
   redirect('/setup?ok=1');
