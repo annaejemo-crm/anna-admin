@@ -70,8 +70,14 @@ export default async function KunderPage({ searchParams }) {
         <table className="w-full">
           <thead>
             <tr>
-              <Th>Datum</Th><Th>Kund</Th><Th>Typ</Th><Th>Plats</Th><Th>Status</Th>
-              <Th right>Avgift</Th><Th right>Bildpaket</Th><Th right>Totalt</Th>
+              <Th right={false}>Datum</Th>
+              <Th right={false}>Kund</Th>
+              <Th right={false}>Typ</Th>
+              <Th right={false}>Plats</Th>
+              <Th right={false}>Status</Th>
+              <Th right={true}>Avgift</Th>
+              <Th right={true}>Bildpaket</Th>
+              <Th right={true}>Totalt</Th>
             </tr>
           </thead>
           <tbody>
@@ -124,7 +130,9 @@ export default async function KunderPage({ searchParams }) {
   );
 }
 
-function PriceCell({ amount, paid }) {
+function PriceCell(props) {
+  const amount = props.amount;
+  const paid = !!props.paid;
   if (!amount) return <span className="text-ink-faint text-[12.5px]">–</span>;
   return (
     <span className={`font-mono text-[12.5px] inline-flex items-center gap-1.5 ${paid ? 'text-positive' : 'text-ink-muted'}`}>
@@ -134,10 +142,11 @@ function PriceCell({ amount, paid }) {
   );
 }
 
-function Th({ children, right }) {
+function Th(props) {
+  const right = !!props.right;
   return (
     <th className={`font-mono text-[10px] tracking-[0.16em] uppercase text-ink-faint py-3.5 px-5 border-b border-line bg-bg font-medium ${right ? 'text-right' : 'text-left'}`}>
-      {children}
+      {props.children}
     </th>
   );
 }
