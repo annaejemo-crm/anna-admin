@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { StatusPill } from '@/components/StatusPill';
 import { notFound } from 'next/navigation';
+import { togglePaid, setBildpaket } from '../actions';
 
 export default async function KundDetaljPage({ params }) {
   const { id } = await params;
@@ -14,6 +15,9 @@ export default async function KundDetaljPage({ params }) {
     .select('*, fotograferingstyp:fotograferingstyper(*)')
     .eq('kund_id', id)
     .order('datum', { ascending: false });
+
+  const { data: paketData } = await supabase.from('bildpaket').select('*').eq('aktiv', true).order('ordning', { ascending: true });
+  const paketList = paketData || [];
 
   const bs = bokningar || [];
 
@@ -51,13 +55,14 @@ export default async function KundDetaljPage({ params }) {
         <SumCard label="Totalt" total={total} paid={totalPaid} primary={true} />
       </div>
 
-      <h2 className="font-serif text-2xl mb-4">Bokningar</h2>
+      <h2 className="font-serif text-2xl mb-1">Bokningar</h2>
+      <p className="text-[11.5px] text-ink-muted mb-4">Klicka på prickarna för att toggla betald-status. Välj bildpaket från dropdown.</p>
       <div className="bg-white border border-line-soft rounded-sm overflow-hidden">
         <table className="w-full">
           <thead>
             <tr>
-              <Th>Datum</Th><Th>Typ</Th><Th>Plats</Th><Th>Status</Th>
-              <Th right>Avgift</Th><Th right>Bildpaket</Th><Th right>Totalt</Th>
+              <Th right={false}>Datum</Th><Th right={false}>Typ</Th><Th right={false}>Plats</Th><Th right={false}>Status</Th>
+              <Th right={true}>Avgift</Th><Th right={false}>Bildpaket</Th><Th right={true}>Totalt</Th>
             </tr>
           </thead>
           <tbody>
@@ -71,8 +76,8 @@ export default async function KundDetaljPage({ params }) {
                   <td className="py-4 px-5 font-serif text-[15px]">{b.fotograferingstyp?.namn || 'Fotografering'}</td>
                   <td className="py-4 px-5 text-[13.5px]">{b.plats || '–'}</td>
                   <td className="py-4 px-5"><StatusPill status={b.status} /></td>
-                  <td className="text-right py-4 px-5"><PriceCell amount={b.bokningsavgift_kr} paid={b.bokningsavgift_betald} /></td>
-                  <td className="text-right py-4 px-5"><PriceCell amount={b.bildpaket_kr} paid={b.bildpaket_betald} /></td>
+                  <td className="text-right py-4 px-5"><PaidToggle bookingId={b.id} kundId={id} kind="avgift" amount={b.bokningsavgift_kr} paid={b.bokningsavgift_betald} /></td>
+                  <td className="py-4 px-5"><BildpaketCell b={b} kundId={id} paketList={paketList} /></td>
                   <td className="font-mono text-[12.5px] text-right py-4 px-5">{tot.toLocaleString('sv-SE')} kr</td>
                 </tr>
               );
@@ -81,6 +86,38 @@ export default async function KundDetaljPage({ params }) {
         </table>
       </div>
     </>
+  );
+}
+
+function BildpaketCell(props) {
+  const b = props.b;
+  const paketList = props.paketList;
+  if (b.bildpaket_kr) {
+    return (
+      <div className="flex items-center gap-2 justify-between">
+        <div>
+          <PaidToggle bookingId={b.id} kundId={props.kundId} kind="paket" amount={b.bildpaket_kr} paid={b.bildpaket_betald} />
+          {b.bildpaket_namn && <div className="text-[10.5px] text-ink-faint mt-0.5 px-2">{b.bildpaket_namn}</div>}
+        </div>
+        <form action={setBildpaket} className="inline-block">
+          <input type="hidden" name="id" value={b.id} />
+          <input type="hidden" name="kundId" value={props.kundId} />
+          <input type="hidden" name="paketId" value="clear" />
+          <button type="submit" title="Rensa paketval" className="text-[10px] text-ink-faint hover:text-danger px-1">✕</button>
+        </form>
+      </div>
+    );
+  }
+  return (
+    <form action={setBildpaket} className="flex gap-1 items-center">
+      <input type="hidden" name="id" value={b.id} />
+      <input type="hidden" name="kundId" value={props.kundId} />
+      <select name="paketId" required className="bg-bg border border-line rounded-sm text-[11.5px] px-2 py-1 flex-1 focus:outline-none focus:border-ink-faint">
+        <option value="">Välj paket…</option>
+        {paketList.map(p => <option key={p.id} value={p.id}>{p.namn} ({p.pris_kr.toLocaleString('sv-SE')} kr)</option>)}
+      </select>
+      <button type="submit" className="text-[11px] px-2 py-1 bg-ink text-bg rounded-sm hover:bg-accent">Sätt</button>
+    </form>
   );
 }
 
@@ -100,15 +137,18 @@ function SumCard(props) {
   );
 }
 
-function PriceCell(props) {
-  const amount = props.amount;
-  const paid = !!props.paid;
-  if (!amount) return <span className="text-ink-faint text-[12.5px]">–</span>;
+function PaidToggle(props) {
+  if (!props.amount) return <span className="text-ink-faint text-[12.5px]">–</span>;
   return (
-    <span className={`font-mono text-[12.5px] inline-flex items-center gap-1.5 ${paid ? 'text-positive' : 'text-ink-muted'}`}>
-      <span className={`w-1.5 h-1.5 rounded-full inline-block ${paid ? 'bg-positive' : 'bg-line'}`}></span>
-      {amount.toLocaleString('sv-SE')} kr
-    </span>
+    <form action={togglePaid} className="inline-block">
+      <input type="hidden" name="id" value={props.bookingId} />
+      <input type="hidden" name="kind" value={props.kind} />
+      <input type="hidden" name="kundId" value={props.kundId} />
+      <button type="submit" className={`font-mono text-[12.5px] inline-flex items-center gap-1.5 px-2 py-1 rounded hover:bg-bg-subtle transition-colors ${props.paid ? 'text-positive' : 'text-ink-muted'}`}>
+        <span className={`w-1.5 h-1.5 rounded-full inline-block ${props.paid ? 'bg-positive' : 'bg-line'}`}></span>
+        {props.amount.toLocaleString('sv-SE')} kr
+      </button>
+    </form>
   );
 }
 
