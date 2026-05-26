@@ -35,7 +35,10 @@ export function Sidebar() {
 
   return (
     <aside className="w-[240px] bg-bg-subtle border-r border-line py-9 px-6 sticky top-0 h-screen flex flex-col gap-1">
-      <div className="font-serif text-[22px] leading-tight">Fotograf Anna<br />Ejemo AB</div>
+      <div className="flex items-center gap-3 mb-1">
+        <img src="/logo.svg" alt="Fotograf Anna Ejemo" className="w-12 h-12" />
+        <div className="font-serif text-[18px] leading-tight">Fotograf Anna<br />Ejemo AB</div>
+      </div>
       <div className="font-mono text-[10px] tracking-[0.18em] uppercase text-ink-faint mb-8">
         Admin · 2026
       </div>
