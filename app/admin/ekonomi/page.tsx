@@ -30,6 +30,16 @@ type TypStat = { count: number; total: number };
 
 const MANADER = ['jan','feb','mar','apr','maj','jun','jul','aug','sep','okt','nov','dec'];
 
+const TYP_FARGER: Record<string, string> = {
+  'Gravid': 'bg-accent',
+  'Nyfödd': 'bg-sage',
+  'Familj': 'bg-positive',
+  'Porträtt': 'bg-warn',
+  'Företag': 'bg-ink-faint',
+  'Bröllop': 'bg-danger',
+  'Övrigt': 'bg-line',
+};
+
 export default async function EkonomiPage(props: { searchParams?: Promise<{ ar?: string }> }) {
   const supabase = await createClient();
   const sp = props.searchParams ? await props.searchParams : {};
@@ -121,6 +131,23 @@ export default async function EkonomiPage(props: { searchParams?: Promise<{ ar?:
 
   const snitt = valtStat.count > 0 ? Math.round(valtStat.total / valtStat.count) : 0;
 
+  const manadTyp: Record<number, Record<string, number>> = {};
+  for (let m = 0; m < 12; m++) manadTyp[m] = {};
+  for (let i = 0; i < bokningar.length; i++) {
+    const b = bokningar[i];
+    if (!b.datum) continue;
+    if (b.status === 'avbokad') continue;
+    const d = new Date(b.datum);
+    if (d.getFullYear() !== valtAr) continue;
+    const namn = b.fotograferingstyp_id ? (typNamn[b.fotograferingstyp_id] || 'Övrigt') : 'Övrigt';
+    if (!manadTyp[d.getMonth()][namn]) manadTyp[d.getMonth()][namn] = 0;
+    manadTyp[d.getMonth()][namn] += 1;
+  }
+  const aktivaTyper: string[] = [];
+  for (let i = 0; i < typArr.length; i++) {
+    if (typArr[i].count > 0) aktivaTyper.push(typArr[i].namn);
+  }
+
   return (
     <>
       <div className="flex justify-between items-end mb-10 pb-6 border-b border-line">
@@ -152,8 +179,11 @@ export default async function EkonomiPage(props: { searchParams?: Promise<{ ar?:
       </div>
 
       <div className="mb-12">
-        <div className="eyebrow mb-4">Månadsfördelning</div>
-        <CompareChart stat2024={stat2024} stat2025={stat2025} stat2026={stat2026} />
+        <div className="flex justify-between items-end mb-4">
+          <div className="eyebrow">Månadsfördelning {valtAr}</div>
+          <div className="text-[11px] text-ink-muted">Antal bokningar per kategori</div>
+        </div>
+        <MonthCategoryChart manadTyp={manadTyp} typer={aktivaTyper} />
       </div>
 
       <div className="mb-12">
@@ -240,6 +270,60 @@ function YearCard(props: { stat: ArStat }) {
       </div>
       <div className="flex justify-between text-[10px] text-ink-faint mt-1.5 px-0.5">
         <span>jan</span><span>apr</span><span>jul</span><span>okt</span><span>dec</span>
+      </div>
+    </div>
+  );
+}
+
+function MonthCategoryChart(props: { manadTyp: Record<number, Record<string, number>>; typer: string[] }) {
+  const manadTyp = props.manadTyp;
+  const typer = props.typer;
+  let max = 0;
+  for (let m = 0; m < 12; m++) {
+    let summa = 0;
+    for (let i = 0; i < typer.length; i++) {
+      summa += manadTyp[m][typer[i]] || 0;
+    }
+    if (summa > max) max = summa;
+  }
+  return (
+    <div className="bg-white border border-line-soft rounded-sm p-6">
+      <div className="flex flex-wrap gap-x-5 gap-y-2 mb-5 text-xs">
+        {typer.map(function(t) {
+          return <Legend key={t} color={TYP_FARGER[t] || 'bg-line'} label={t} />;
+        })}
+      </div>
+      <div className="flex items-end gap-2 h-56">
+        {MANADER.map(function(namn, m) {
+          let summa = 0;
+          for (let i = 0; i < typer.length; i++) summa += manadTyp[m][typer[i]] || 0;
+          const titel = typer.map(function(t) {
+            const v = manadTyp[m][t] || 0;
+            return v > 0 ? `${t}: ${v}` : null;
+          }).filter(function(x) { return x !== null; }).join('\n');
+          return (
+            <div key={m} className="flex-1 flex flex-col items-center">
+              <div className="text-[10px] text-ink-muted mb-1 tabular-nums">{summa > 0 ? summa : ''}</div>
+              <div className="w-full flex flex-col-reverse h-full" title={`${namn}\n${titel || 'inga bokningar'}`}>
+                {typer.map(function(t, ti) {
+                  const v = manadTyp[m][t] || 0;
+                  if (v === 0) return null;
+                  const h = max > 0 ? (v / max) * 100 : 0;
+                  const isFirst = ti === 0;
+                  const isLast = ti === typer.length - 1;
+                  return (
+                    <div
+                      key={t}
+                      className={`${TYP_FARGER[t] || 'bg-line'} ${isFirst ? '' : ''} ${isLast ? 'rounded-t-sm' : ''}`}
+                      style={{ height: `${h}%`, minHeight: v > 0 ? '3px' : '0' }}
+                    />
+                  );
+                })}
+              </div>
+              <div className="text-[10px] text-ink-faint mt-1.5">{namn}</div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
