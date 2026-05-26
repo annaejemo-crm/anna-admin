@@ -114,12 +114,20 @@ export default async function KundDetaljPage(props: { params: Promise<{ id: stri
                     {((b.bokningsavgift_kr || 0) + (b.bildpaket_kr || 0)).toLocaleString('sv-SE')} kr
                   </td>
                   <td className="px-4 py-3.5 text-right">
-                    <Link
-                      href={`/admin/bokningar/${b.id}/redigera`}
-                      className="text-[12px] text-ink-muted hover:text-ink underline underline-offset-2"
-                    >
-                      Redigera
-                    </Link>
+                    <div className="flex gap-3 justify-end">
+                      <Link
+                        href={`/admin/bokningar/${b.id}/mail`}
+                        className="text-[12px] text-ink-muted hover:text-ink underline underline-offset-2"
+                      >
+                        Mail
+                      </Link>
+                      <Link
+                        href={`/admin/bokningar/${b.id}/redigera`}
+                        className="text-[12px] text-ink-muted hover:text-ink underline underline-offset-2"
+                      >
+                        Redigera
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               );
