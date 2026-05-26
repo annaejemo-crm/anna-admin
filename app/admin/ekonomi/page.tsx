@@ -293,7 +293,7 @@ function MonthCategoryChart(props: { manadTyp: Record<number, Record<string, num
           return <Legend key={t} color={TYP_FARGER[t] || 'bg-line'} label={t} />;
         })}
       </div>
-      <div className="flex items-end gap-2 h-56">
+      <div className="flex items-end gap-2 h-80">
         {MANADER.map(function(namn, m) {
           let summa = 0;
           for (let i = 0; i < typer.length; i++) summa += manadTyp[m][typer[i]] || 0;
@@ -301,21 +301,21 @@ function MonthCategoryChart(props: { manadTyp: Record<number, Record<string, num
             const v = manadTyp[m][t] || 0;
             return v > 0 ? `${t}: ${v}` : null;
           }).filter(function(x) { return x !== null; }).join('\n');
+          const stapelH = max > 0 ? (summa / max) * 100 : 0;
           return (
-            <div key={m} className="flex-1 flex flex-col items-center">
-              <div className="text-[10px] text-ink-muted mb-1 tabular-nums">{summa > 0 ? summa : ''}</div>
-              <div className="w-full flex flex-col-reverse h-full" title={`${namn}\n${titel || 'inga bokningar'}`}>
+            <div key={m} className="flex-1 flex flex-col items-center justify-end h-full">
+              <div className="text-[10px] text-ink-muted mb-1 tabular-nums h-3">{summa > 0 ? summa : ''}</div>
+              <div className="w-full flex flex-col-reverse" style={{ height: `${stapelH}%` }} title={`${namn}\n${titel || 'inga bokningar'}`}>
                 {typer.map(function(t, ti) {
                   const v = manadTyp[m][t] || 0;
                   if (v === 0) return null;
-                  const h = max > 0 ? (v / max) * 100 : 0;
-                  const isFirst = ti === 0;
+                  const andel = summa > 0 ? (v / summa) * 100 : 0;
                   const isLast = ti === typer.length - 1;
                   return (
                     <div
                       key={t}
-                      className={`${TYP_FARGER[t] || 'bg-line'} ${isFirst ? '' : ''} ${isLast ? 'rounded-t-sm' : ''}`}
-                      style={{ height: `${h}%`, minHeight: v > 0 ? '3px' : '0' }}
+                      className={`${TYP_FARGER[t] || 'bg-line'} ${isLast ? 'rounded-t-sm' : ''} flex-shrink-0`}
+                      style={{ height: `${andel}%`, minHeight: v > 0 ? '4px' : '0' }}
                     />
                   );
                 })}
