@@ -33,7 +33,7 @@ export default async function InstallningarPage() {
       <div className="space-y-10 max-w-3xl">
         <div className="bg-white border border-line-soft rounded-sm p-7">
           <div className="flex items-center gap-5">
-            <img src="/logo.svg" alt="Logo" className="w-20 h-20" />
+            <img src="/logo.svg" alt="Logo" className="w-32 h-32" />
             <div>
               <div className="eyebrow mb-1">Logotyp</div>
               <p className="text-sm text-ink-muted">
