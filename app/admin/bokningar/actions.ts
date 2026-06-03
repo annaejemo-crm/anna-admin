@@ -62,6 +62,72 @@ export async function deleteBokning(formData: FormData) {
   redirect(`/admin/kunder/${kund_id}`);
 }
 
+export async function skapaBokning(formData: FormData) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const kund_lage = String(formData.get('kund_lage') || 'ny');
+  let kund_id: string | null = null;
+
+  if (kund_lage === 'existerande') {
+    kund_id = String(formData.get('kund_id') || '') || null;
+  } else {
+    const fornamn = String(formData.get('fornamn') || '');
+    const efternamn = String(formData.get('efternamn') || '') || null;
+    const foretagsnamn = String(formData.get('foretagsnamn') || '') || null;
+    const email = String(formData.get('email') || '') || null;
+    const telefon = String(formData.get('telefon') || '') || null;
+    const hur_hittade = String(formData.get('hur_hittade') || '') || null;
+
+    const { data: nyKund } = await supabase.from('kunder').insert({
+      user_id: user.id,
+      fornamn: fornamn,
+      efternamn: efternamn,
+      foretagsnamn: foretagsnamn,
+      email: email,
+      telefon: telefon,
+      hur_hittade: hur_hittade,
+    }).select('id').single();
+
+    if (nyKund) kund_id = nyKund.id;
+  }
+
+  if (!kund_id) return;
+
+  const datum = String(formData.get('datum') || '') || null;
+  const tid = String(formData.get('tid') || '') || null;
+  const plats = String(formData.get('plats') || '') || null;
+  const adress = String(formData.get('adress') || '') || null;
+  const fotograferingstyp_id = String(formData.get('fotograferingstyp_id') || '') || null;
+  const status = String(formData.get('status') || 'bokad');
+
+  const bokningsavgiftRaw = String(formData.get('bokningsavgift_kr') || '');
+  const bokningsavgift_kr = bokningsavgiftRaw ? parseInt(bokningsavgiftRaw, 10) : null;
+  const bokningsavgift_betald = formData.get('bokningsavgift_betald') === 'on';
+  const intern_anteckning = String(formData.get('intern_anteckning') || '') || null;
+
+  await supabase.from('bokningar').insert({
+    user_id: user.id,
+    kund_id: kund_id,
+    datum: datum,
+    tid: tid,
+    plats: plats,
+    adress: adress,
+    fotograferingstyp_id: fotograferingstyp_id,
+    status: status,
+    bokningsavgift_kr: bokningsavgift_kr,
+    bokningsavgift_betald: bokningsavgift_betald,
+    bildpaket_betald: false,
+    intern_anteckning: intern_anteckning,
+  });
+
+  revalidatePath('/admin/kunder');
+  revalidatePath(`/admin/kunder/${kund_id}`);
+  revalidatePath('/admin/ekonomi');
+  redirect(`/admin/kunder/${kund_id}`);
+}
+
 export async function updateKund(formData: FormData) {
   const supabase = await createClient();
   const id = String(formData.get('id') || '');
