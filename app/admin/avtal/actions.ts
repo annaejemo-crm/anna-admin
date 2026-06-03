@@ -13,14 +13,15 @@ function slug(): string {
 
 export async function skapaAvtal(formData: FormData) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const userRes = await supabase.auth.getUser();
+  const user = userRes.data.user;
   if (!user) return;
 
   const bokning_id = String(formData.get('bokning_id') || '');
   const mall_id = String(formData.get('mall_id') || '') || null;
   const personligt_meddelande = String(formData.get('personligt_meddelande') || '') || null;
 
-  const klausuler: { titel: string; brodtext: string }[] = [];
+  const klausuler: any[] = [];
   const titlarRaw = formData.getAll('klausul_titel');
   const broddetarRaw = formData.getAll('klausul_brod');
   for (let i = 0; i < titlarRaw.length; i++) {
@@ -74,7 +75,8 @@ export async function skapaAvtal(formData: FormData) {
 
 export async function skickaAvtal(formData: FormData) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const userRes = await supabase.auth.getUser();
+  const user = userRes.data.user;
   if (!user) return;
 
   const id = String(formData.get('id') || '');
@@ -111,7 +113,7 @@ export async function skickaAvtal(formData: FormData) {
 
   revalidatePath(`/admin/avtal/${id}`);
   revalidatePath('/admin/avtal');
-  revalidatePath(`/admin/kunder@);
+  revalidatePath(`/admin/kunder`);
 }
 
 export async function raderaAvtal(formData: FormData) {
