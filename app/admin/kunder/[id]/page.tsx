@@ -116,6 +116,12 @@ export default async function KundDetaljPage(props: { params: Promise<{ id: stri
                   <td className="px-4 py-3.5 text-right">
                     <div className="flex gap-3 justify-end">
                       <Link
+                        href={`/admin/bokningar/${b.id}/avtal`}
+                        className="text-[12px] text-ink-muted hover:text-ink underline underline-offset-2"
+                      >
+                        Avtal
+                      </Link>
+                      <Link
                         href={`/admin/bokningar/${b.id}/mail`}
                         className="text-[12px] text-ink-muted hover:text-ink underline underline-offset-2"
                       >
