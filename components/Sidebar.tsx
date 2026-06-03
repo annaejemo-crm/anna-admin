@@ -10,6 +10,7 @@ const NAV = [
     items: [
       { href: '/admin', label: 'Dashboard' },
       { href: '/admin/kunder', label: 'Kunder & bokningar' },
+      { href: '/admin/bokningar/ny', label: '+ Ny bokning' },
       { href: '/admin/kalender', label: 'Kalender' },
     ],
   },
