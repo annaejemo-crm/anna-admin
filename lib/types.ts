@@ -36,6 +36,24 @@ export const STATUS_LABELS: Record<StatusKod, string> = {
  * Flöde: bokad → väntar_galleri (fotografering passerat) → galleri_skickat → klar (bildpaket valt).
  * Avbokad behålls om explicit satt.
  */
+export type AvtalStatusKort = 'inget' | 'skickat' | 'signerat';
+
+/**
+ * Plockar ut avtalsstatus från en boknings relaterade avtal.
+ * Returnerar 'signerat' om något avtal är signat, 'skickat' om något är skickat,
+ * annars 'inget'.
+ */
+export function harledAvtalStatus(b: any): AvtalStatusKort {
+  const avtalLista = Array.isArray(b?.avtal) ? b.avtal : [];
+  for (let i = 0; i < avtalLista.length; i++) {
+    if (avtalLista[i]?.status === 'signat') return 'signerat';
+  }
+  for (let i = 0; i < avtalLista.length; i++) {
+    if (avtalLista[i]?.status === 'skickat') return 'skickat';
+  }
+  return 'inget';
+}
+
 export function harledBokningStatus(b: any): StatusKod {
   if (!b) return 'bokad';
   if (b.status === 'avbokad') return 'avbokad';
