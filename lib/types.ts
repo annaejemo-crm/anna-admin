@@ -1,6 +1,6 @@
-/* =======================================================================
+/* ====================================================================
    TypeScript-typer som speglar databasschemat (00_initial.sql)
-   ======================================================================= */
+   ====================================================================== */
 
 export type StatusKod =
   | 'forfragan'
@@ -8,6 +8,8 @@ export type StatusKod =
   | 'avtal_skickat'
   | 'signat'
   | 'fotograferad'
+  | 'vantar_galleri'
+  | 'galleri_skickat'
   | 'paket_att_valja'
   | 'levererat'
   | 'betald'
@@ -20,12 +22,29 @@ export const STATUS_LABELS: Record<StatusKod, string> = {
   avtal_skickat: 'Avtal skickat',
   signat: 'Signat',
   fotograferad: 'Fotograferad',
+  vantar_galleri: 'Väntar på galleri',
+  galleri_skickat: 'Galleri skickat',
   paket_att_valja: 'Paket att välja',
   levererat: 'Levererat',
   betald: 'Betald',
   klar: 'Klar',
   avbokad: 'Avbokad',
 };
+
+/**
+ * Härleder status från en boknings data så vi slipper hålla status-fältet manuellt synkat.
+ * Flöde: bokad → väntar_galleri (fotografering passerat) → galleri_skickat → klar (bildpaket valt).
+ * Avbokad behålls om explicit satt.
+ */
+export function harledBokningStatus(b: any): StatusKod {
+  if (!b) return 'bokad';
+  if (b.status === 'avbokad') return 'avbokad';
+  if (b.bildpaket_namn && b.bildpaket_kr) return 'klar';
+  if (b.kundgalleri_skickat) return 'galleri_skickat';
+  const idag = new Date().toISOString().slice(0, 10);
+  if (b.datum && b.datum < idag) return 'vantar_galleri';
+  return 'bokad';
+}
 
 export type Fotograferingstyp = {
   id: string;
