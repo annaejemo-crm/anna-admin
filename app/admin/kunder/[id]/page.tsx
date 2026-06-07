@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { togglePaid, setBildpaket } from '../actions';
 import { toggleKundgalleri } from '../../bokningar/actions';
+import { harledBokningStatus } from '@/lib/types';
 
 export default async function KundDetaljPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
@@ -105,7 +106,7 @@ export default async function KundDetaljPage(props: { params: Promise<{ id: stri
                   <td className="px-4 py-3.5 font-mono text-[12px] text-ink-muted">{b.datum || 'inget datum'}</td>
                   <td className="px-4 py-3.5">{b.fotograferingstyp?.namn || ''}</td>
                   <td className="px-4 py-3.5 text-ink-muted">{b.plats || ''}</td>
-                  <td className="px-4 py-3.5"><StatusPill status={b.status} /></td>
+                  <td className="px-4 py-3.5"><StatusPill status={harledBokningStatus(b)} /></td>
                   <td className="px-4 py-3.5 text-right">
                     <PaidCell id={b.id} kundId={kund.id} kind="avgift" belopp={b.bokningsavgift_kr || 0} betald={!!b.bokningsavgift_betald} />
                   </td>
