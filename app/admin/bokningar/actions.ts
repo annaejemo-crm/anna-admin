@@ -75,6 +75,45 @@ export async function toggleKundgalleri(formData: FormData) {
   revalidatePath('/admin/kunder');
 }
 
+/**
+ * Cyklar status framåt: väntar på galleri → galleri skickat → klar → väntar på galleri.
+ * Klar betyder bokning_klar = true. Anna kan klicka tillbaka från klar om hon vill rätta.
+ */
+export async function gaVidare(formData: FormData) {
+  const supabase = await createClient();
+  const id = String(formData.get('id') || '');
+  const kund_id = String(formData.get('kund_id') || '');
+
+  const { data: b } = await supabase
+    .from('bokningar')
+    .select('kundgalleri_skickat, bokning_klar')
+    .eq('id', id)
+    .single();
+
+  if (!b) return;
+
+  if (b.bokning_klar) {
+    await supabase.from('bokningar').update({
+      bokning_klar: false,
+      kundgalleri_skickat: false,
+      kundgalleri_skickat_at: null,
+    }).eq('id', id);
+  } else if (b.kundgalleri_skickat) {
+    await supabase.from('bokningar').update({
+      bokning_klar: true,
+    }).eq('id', id);
+  } else {
+    await supabase.from('bokningar').update({
+      kundgalleri_skickat: true,
+      kundgalleri_skickat_at: new Date().toISOString(),
+    }).eq('id', id);
+  }
+
+  if (kund_id) revalidatePath(`/admin/kunder/${kund_id}`);
+  revalidatePath('/admin');
+  revalidatePath('/admin/kunder');
+}
+
 export async function deleteBokning(formData: FormData) {
   const supabase = await createClient();
   const id = String(formData.get('id') || '');
