@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { StatusPill } from '@/components/StatusPill';
 import type { DashboardSummary, BokningExpanderad } from '@/lib/types';
 import { harledBokningStatus } from '@/lib/types';
+import { toggleKundgalleri } from './bokningar/actions';
 import Link from 'next/link';
 
 const MONTH_NAMES = ['januari', 'februari', 'mars', 'april', 'maj', 'juni', 'juli', 'augusti', 'september', 'oktober', 'november', 'december'];
@@ -139,6 +140,13 @@ export default async function DashboardPage() {
                 {pagaende.map(function(b: any) {
                   const dgr = dagarSedan(b.datum);
                   const namn = b.kund?.foretagsnamn || `${b.kund?.fornamn || ''} ${b.kund?.efternamn || ''}`.trim();
+                  const st = harledBokningStatus(b);
+                  const klickbar = st === 'vantar_galleri' || st === 'galleri_skickat';
+                  const hjalp = st === 'vantar_galleri'
+                    ? 'Klicka när du skickat galleriet'
+                    : st === 'galleri_skickat'
+                      ? 'Klicka för att backa till Väntar på galleri'
+                      : '';
                   return (
                     <tr key={b.id} className="border-b border-line-soft last:border-0 hover:bg-bg">
                       <Td className="font-mono text-[12px] text-ink-muted whitespace-nowrap">{formatDate(b.datum)}</Td>
@@ -147,7 +155,19 @@ export default async function DashboardPage() {
                       </Td>
                       <Td>{b.fotograferingstyp?.namn || '–'}</Td>
                       <Td>{b.plats || '–'}</Td>
-                      <Td><StatusPill status={harledBokningStatus(b)} /></Td>
+                      <Td>
+                        {klickbar ? (
+                          <form action={toggleKundgalleri} className="inline">
+                            <input type="hidden" name="id" value={b.id} />
+                            <input type="hidden" name="kund_id" value={b.kund_id} />
+                            <button type="submit" title={hjalp} className="cursor-pointer hover:opacity-70 transition-opacity">
+                              <StatusPill status={st} />
+                            </button>
+                          </form>
+                        ) : (
+                          <StatusPill status={st} />
+                        )}
+                      </Td>
                       <Td right className={`font-mono text-[12.5px] ${dgr > 14 ? 'text-accent' : 'text-ink-muted'}`}>{dgr} dgr</Td>
                     </tr>
                   );
