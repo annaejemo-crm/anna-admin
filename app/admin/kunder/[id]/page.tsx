@@ -106,7 +106,23 @@ export default async function KundDetaljPage(props: { params: Promise<{ id: stri
                   <td className="px-4 py-3.5 font-mono text-[12px] text-ink-muted">{b.datum || 'inget datum'}</td>
                   <td className="px-4 py-3.5">{b.fotograferingstyp?.namn || ''}</td>
                   <td className="px-4 py-3.5 text-ink-muted">{b.plats || ''}</td>
-                  <td className="px-4 py-3.5"><StatusPill status={harledBokningStatus(b)} /></td>
+                  <td className="px-4 py-3.5">
+                    {(() => {
+                      const st = harledBokningStatus(b);
+                      const klickbar = st === 'vantar_galleri' || st === 'galleri_skickat';
+                      if (!klickbar) return <StatusPill status={st} />;
+                      const hjalp = st === 'vantar_galleri' ? 'Klicka när du skickat galleriet' : 'Klicka för att backa till Väntar på galleri';
+                      return (
+                        <form action={toggleKundgalleri} className="inline">
+                          <input type="hidden" name="id" value={b.id} />
+                          <input type="hidden" name="kund_id" value={kund.id} />
+                          <button type="submit" title={hjalp} className="cursor-pointer hover:opacity-70 transition-opacity">
+                            <StatusPill status={st} />
+                          </button>
+                        </form>
+                      );
+                    })()}
+                  </td>
                   <td className="px-4 py-3.5 text-right">
                     <PaidCell id={b.id} kundId={kund.id} kind="avgift" belopp={b.bokningsavgift_kr || 0} betald={!!b.bokningsavgift_betald} />
                   </td>
