@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { StatusPill } from '@/components/StatusPill';
 import type { DashboardSummary, BokningExpanderad } from '@/lib/types';
 import { harledBokningStatus } from '@/lib/types';
-import { toggleKundgalleri } from './bokningar/actions';
+import { gaVidare } from './bokningar/actions';
 import Link from 'next/link';
 
 const MONTH_NAMES = ['januari', 'februari', 'mars', 'april', 'maj', 'juni', 'juli', 'augusti', 'september', 'oktober', 'november', 'december'];
@@ -53,8 +53,9 @@ export default async function DashboardPage() {
   const idag = now.toISOString().slice(0, 10);
   const { data: pagaendeRaw } = await supabase
     .from('bokningar')
-    .select('id, datum, plats, kund_id, status, bildpaket_namn, bildpaket_kr, kundgalleri_skickat, kundgalleri_skickat_at, kund:kunder(fornamn, efternamn, foretagsnamn), fotograferingstyp:fotograferingstyper(namn)')
+    .select('id, datum, plats, kund_id, status, bildpaket_namn, bildpaket_kr, kundgalleri_skickat, kundgalleri_skickat_at, bokning_klar, kund:kunder(fornamn, efternamn, foretagsnamn), fotograferingstyp:fotograferingstyper(namn)')
     .lt('datum', idag)
+    .eq('bokning_klar', false)
     .is('bildpaket_kr', null)
     .order('datum', { ascending: false })
     .limit(30);
@@ -145,7 +146,7 @@ export default async function DashboardPage() {
                   const hjalp = st === 'vantar_galleri'
                     ? 'Klicka när du skickat galleriet'
                     : st === 'galleri_skickat'
-                      ? 'Klicka för att backa till Väntar på galleri'
+                      ? 'Klicka när allt är klart'
                       : '';
                   return (
                     <tr key={b.id} className="border-b border-line-soft last:border-0 hover:bg-bg">
@@ -157,7 +158,7 @@ export default async function DashboardPage() {
                       <Td>{b.plats || '–'}</Td>
                       <Td>
                         {klickbar ? (
-                          <form action={toggleKundgalleri} className="inline">
+                          <form action={gaVidare} className="inline">
                             <input type="hidden" name="id" value={b.id} />
                             <input type="hidden" name="kund_id" value={b.kund_id} />
                             <button type="submit" title={hjalp} className="cursor-pointer hover:opacity-70 transition-opacity">
