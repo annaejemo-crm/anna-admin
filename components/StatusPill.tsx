@@ -6,6 +6,8 @@ const COLOR: Record<StatusKod, string> = {
   avtal_skickat: 'text-warn',
   signat: 'text-sage',
   fotograferad: 'text-accent',
+  vantar_galleri: 'text-warn',
+  galleri_skickat: 'text-sage',
   paket_att_valja: 'text-warn',
   levererat: 'text-positive',
   betald: 'text-positive',
