@@ -39,6 +39,7 @@ export const STATUS_LABELS: Record<StatusKod, string> = {
 export function harledBokningStatus(b: any): StatusKod {
   if (!b) return 'bokad';
   if (b.status === 'avbokad') return 'avbokad';
+  if (b.bokning_klar) return 'klar';
   if (b.bildpaket_namn && b.bildpaket_kr) return 'klar';
   if (b.kundgalleri_skickat) return 'galleri_skickat';
   const idag = new Date().toISOString().slice(0, 10);
