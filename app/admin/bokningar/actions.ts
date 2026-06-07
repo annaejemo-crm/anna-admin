@@ -51,6 +51,30 @@ export async function updateBokning(formData: FormData) {
   redirect(`/admin/kunder/${kund_id}`);
 }
 
+export async function toggleKundgalleri(formData: FormData) {
+  const supabase = await createClient();
+  const id = String(formData.get('id') || '');
+  const kund_id = String(formData.get('kund_id') || '');
+
+  const { data: bokning } = await supabase
+    .from('bokningar')
+    .select('kundgalleri_skickat')
+    .eq('id', id)
+    .single();
+
+  if (!bokning) return;
+
+  const nyttVarde = !bokning.kundgalleri_skickat;
+  await supabase.from('bokningar').update({
+    kundgalleri_skickat: nyttVarde,
+    kundgalleri_skickat_at: nyttVarde ? new Date().toISOString() : null,
+  }).eq('id', id);
+
+  if (kund_id) revalidatePath(`/admin/kunder/${kund_id}`);
+  revalidatePath('/admin');
+  revalidatePath('/admin/kunder');
+}
+
 export async function deleteBokning(formData: FormData) {
   const supabase = await createClient();
   const id = String(formData.get('id') || '');

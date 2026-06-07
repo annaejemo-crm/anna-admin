@@ -47,6 +47,25 @@ export default async function DashboardPage() {
 
   const upcoming = (upcomingRaw || []) as unknown as BokningExpanderad[];
 
+  /* Väntar på galleri: bokningar i förgången tid där kundgalleri ej är skickat */
+  const idag = now.toISOString().slice(0, 10);
+  const { data: vantarGalleriRaw } = await supabase
+    .from('bokningar')
+    .select('id, datum, plats, kund_id, kund:kunder(fornamn, efternamn, foretagsnamn), fotograferingstyp:fotograferingstyper(namn)')
+    .lt('datum', idag)
+    .eq('kundgalleri_skickat', false)
+    .order('datum', { ascending: false })
+    .limit(15);
+
+  const vantarGalleri = (vantarGalleriRaw || []) as any[];
+
+  function dagarSedan(datum: string | null): number {
+    if (!datum) return 0;
+    const d = new Date(datum);
+    const diffMs = now.getTime() - d.getTime();
+    return Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  }
+
   return (
     <>
       <div className="flex justify-between items-end mb-10 pb-6 border-b border-line">
@@ -65,6 +84,41 @@ export default async function DashboardPage() {
         <Kpi label="Inkommit hittills" value={`${(k.inkommit_kr || 0).toLocaleString('sv-SE')} kr`} sub="registrerade betalningar" />
         <Kpi label="Väntar på paketval" value={String(k.vantar_paketval || 0)} sub="kunder som sett bilder" />
       </div>
+
+      {vantarGalleri.length > 0 && (
+        <section className="mb-12">
+          <h2 className="text-2xl font-serif mb-1">Väntar på galleri</h2>
+          <p className="text-ink-muted text-[13px] mb-5">
+            Fotograferingar där du inte markerat att galleriet är skickat. Klicka på pricken hos kunden när du är klar så försvinner bokningen härifrån.
+          </p>
+          <div className="bg-white border border-line-soft rounded-sm overflow-hidden">
+            <table className="w-full">
+              <thead>
+                <tr>
+                  <Th>Datum</Th><Th>Kund</Th><Th>Typ</Th><Th>Plats</Th><Th right>Dagar sedan</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {vantarGalleri.map(function(b: any) {
+                  const dgr = dagarSedan(b.datum);
+                  const namn = b.kund?.foretagsnamn || `${b.kund?.fornamn || ''} ${b.kund?.efternamn || ''}`.trim();
+                  return (
+                    <tr key={b.id} className="border-b border-line-soft last:border-0 hover:bg-bg">
+                      <Td className="font-mono text-[12px] text-ink-muted whitespace-nowrap">{formatDate(b.datum)}</Td>
+                      <Td className="font-serif text-[17px]">
+                        <Link href={`/admin/kunder/${b.kund_id}`}>{namn}</Link>
+                      </Td>
+                      <Td>{b.fotograferingstyp?.namn || '–'}</Td>
+                      <Td>{b.plats || '–'}</Td>
+                      <Td right className={`font-mono text-[12.5px] ${dgr > 14 ? 'text-accent' : 'text-ink-muted'}`}>{dgr} dgr</Td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       <section className="mb-12">
         <h2 className="text-2xl font-serif mb-1">Den närmaste veckan</h2>

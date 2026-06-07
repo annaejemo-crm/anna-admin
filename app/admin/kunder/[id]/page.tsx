@@ -3,6 +3,7 @@ import { StatusPill } from '@/components/StatusPill';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { togglePaid, setBildpaket } from '../actions';
+import { toggleKundgalleri } from '../../bokningar/actions';
 
 export default async function KundDetaljPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
@@ -90,13 +91,14 @@ export default async function KundDetaljPage(props: { params: Promise<{ id: stri
               <th className="px-4 py-3 font-medium">Status</th>
               <th className="px-4 py-3 font-medium text-right">Avgift</th>
               <th className="px-4 py-3 font-medium">Bildpaket</th>
+              <th className="px-4 py-3 font-medium">Galleri</th>
               <th className="px-4 py-3 font-medium text-right">Totalt</th>
               <th className="px-4 py-3 font-medium text-right" />
             </tr>
           </thead>
           <tbody>
             {bokningar.length === 0 ? (
-              <tr><td colSpan={8} className="px-4 py-10 text-center text-ink-faint">Inga bokningar för denna kund.</td></tr>
+              <tr><td colSpan={9} className="px-4 py-10 text-center text-ink-faint">Inga bokningar för denna kund.</td></tr>
             ) : bokningar.map(function(b: any) {
               return (
                 <tr key={b.id} className="border-t border-line-soft hover:bg-bg-subtle/40">
@@ -109,6 +111,9 @@ export default async function KundDetaljPage(props: { params: Promise<{ id: stri
                   </td>
                   <td className="px-4 py-3.5">
                     <BildpaketCell bokning={b} kundId={kund.id} paketLista={paket} />
+                  </td>
+                  <td className="px-4 py-3.5">
+                    <GalleriCell id={b.id} kundId={kund.id} skickat={!!b.kundgalleri_skickat} skickatAt={b.kundgalleri_skickat_at} />
                   </td>
                   <td className="px-4 py-3.5 text-right font-mono text-[12.5px]">
                     {((b.bokningsavgift_kr || 0) + (b.bildpaket_kr || 0)).toLocaleString('sv-SE')} kr
@@ -165,6 +170,21 @@ function PaidCell(props: { id: string; kundId: string; kind: 'avgift' | 'paket';
       <input type="hidden" name="kundId" value={props.kundId} />
       <span className="font-mono text-[12.5px]">{props.belopp.toLocaleString('sv-SE')} kr</span>
       <button type="submit" title={props.betald ? 'Betald (klicka för att avmarkera)' : 'Ej betald (klicka för att markera)'} className={`w-2.5 h-2.5 rounded-full ${dotColor} hover:scale-125 transition-transform`} />
+    </form>
+  );
+}
+
+function GalleriCell(props: { id: string; kundId: string; skickat: boolean; skickatAt: string | null }) {
+  const dotColor = props.skickat ? 'bg-sage' : 'bg-line';
+  const titel = props.skickat
+    ? `Galleri skickat${props.skickatAt ? ' ' + new Date(props.skickatAt).toLocaleDateString('sv-SE') : ''}. Klicka för att avmarkera.`
+    : 'Galleri ej skickat. Klicka när du har skickat.';
+  return (
+    <form action={toggleKundgalleri} className="inline-flex items-center gap-2">
+      <input type="hidden" name="id" value={props.id} />
+      <input type="hidden" name="kund_id" value={props.kundId} />
+      <button type="submit" title={titel} className={`w-2.5 h-2.5 rounded-full ${dotColor} hover:scale-125 transition-transform`} />
+      <span className="text-[11.5px] text-ink-muted">{props.skickat ? 'Skickat' : 'Ej skickat'}</span>
     </form>
   );
 }
