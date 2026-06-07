@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
 import { StatusPill } from '@/components/StatusPill';
 import { harledBokningStatus } from '@/lib/types';
-import { toggleKundgalleri } from '../bokningar/actions';
+import { gaVidare } from '../bokningar/actions';
 
 const MONTH_NAMES = ['januari', 'februari', 'mars', 'april', 'maj', 'juni', 'juli', 'augusti', 'september', 'oktober', 'november', 'december'];
 
@@ -117,8 +117,12 @@ export default async function KunderPage(props: { searchParams?: Promise<{ ar?: 
                   </tr>,
                   ...grouped[m].map((b) => {
                     const st = harledBokningStatus(b);
-                    const klickbar = st === 'vantar_galleri' || st === 'galleri_skickat';
-                    const hjalp = st === 'vantar_galleri' ? 'Klicka när du skickat galleriet' : 'Klicka för att backa till Väntar på galleri';
+                    const klickbar = st === 'vantar_galleri' || st === 'galleri_skickat' || st === 'klar';
+                    const hjalp = st === 'vantar_galleri'
+                      ? 'Klicka när du skickat galleriet'
+                      : st === 'galleri_skickat'
+                        ? 'Klicka när allt är klart'
+                        : 'Klicka för att börja om från Väntar på galleri';
                     return (
                       <tr key={b.id} className="border-b border-line-soft hover:bg-bg cursor-pointer">
                         <td className="font-mono text-[12px] text-ink-muted whitespace-nowrap py-4 px-5">
@@ -133,7 +137,7 @@ export default async function KunderPage(props: { searchParams?: Promise<{ ar?: 
                         <td className="py-4 px-5 text-[13.5px]">{b.plats || '–'}</td>
                         <td className="py-4 px-5">
                           {klickbar ? (
-                            <form action={toggleKundgalleri} className="inline">
+                            <form action={gaVidare} className="inline">
                               <input type="hidden" name="id" value={b.id} />
                               <input type="hidden" name="kund_id" value={b.kund_id} />
                               <button type="submit" title={hjalp} className="cursor-pointer hover:opacity-70 transition-opacity">
