@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/server';
 import { StatusPill } from '@/components/StatusPill';
 import type { DashboardSummary, BokningExpanderad } from '@/lib/types';
-import { harledBokningStatus } from '@/lib/types';
+import { harledBokningStatus, harledAvtalStatus } from '@/lib/types';
+import { AvtalPill } from '@/components/AvtalPill';
 import { gaVidare } from './bokningar/actions';
 import Link from 'next/link';
 
@@ -41,7 +42,7 @@ export default async function DashboardPage() {
 
   const { data: upcomingRaw } = await supabase
     .from('bokningar')
-    .select('*, kund:kunder(*), fotograferingstyp:fotograferingstyper(*)')
+    .select('*, kund:kunder(*), fotograferingstyp:fotograferingstyper(*), avtal(status)')
     .gte('datum', now.toISOString().slice(0, 10))
     .lte('datum', weekFromNow.toISOString().slice(0, 10))
     .order('datum', { ascending: true })
@@ -53,7 +54,7 @@ export default async function DashboardPage() {
   const idag = now.toISOString().slice(0, 10);
   const { data: pagaendeRaw } = await supabase
     .from('bokningar')
-    .select('id, datum, plats, kund_id, status, bildpaket_namn, bildpaket_kr, kundgalleri_skickat, kundgalleri_skickat_at, bokning_klar, kund:kunder(fornamn, efternamn, foretagsnamn), fotograferingstyp:fotograferingstyper(namn)')
+    .select('id, datum, plats, kund_id, status, bildpaket_namn, bildpaket_kr, kundgalleri_skickat, kundgalleri_skickat_at, bokning_klar, kund:kunder(fornamn, efternamn, foretagsnamn), fotograferingstyp:fotograferingstyper(namn), avtal(status)')
     .lt('datum', idag)
     .eq('bokning_klar', false)
     .is('bildpaket_kr', null)
@@ -102,7 +103,7 @@ export default async function DashboardPage() {
             <table className="w-full">
               <thead>
                 <tr>
-                  <Th>Datum</Th><Th>Kund</Th><Th>Typ</Th><Th>Plats</Th><Th>Status</Th><Th right>Pris</Th>
+                  <Th>Datum</Th><Th>Kund</Th><Th>Typ</Th><Th>Plats</Th><Th>Avtal</Th><Th>Status</Th><Th right>Pris</Th>
                 </tr>
               </thead>
               <tbody>
@@ -114,6 +115,7 @@ export default async function DashboardPage() {
                     </Td>
                     <Td>{b.fotograferingstyp?.namn || '–'}</Td>
                     <Td>{b.plats || '–'}</Td>
+                    <Td><AvtalPill status={harledAvtalStatus(b)} /></Td>
                     <Td><StatusPill status={harledBokningStatus(b)} /></Td>
                     <Td right className="font-mono text-[12.5px]">{b.bokningsavgift_kr || b.bildpaket_kr ? `${((b.bokningsavgift_kr || 0) + (b.bildpaket_kr || 0)).toLocaleString('sv-SE')} kr` : '–'}</Td>
                   </tr>
@@ -134,7 +136,7 @@ export default async function DashboardPage() {
             <table className="w-full">
               <thead>
                 <tr>
-                  <Th>Datum</Th><Th>Kund</Th><Th>Typ</Th><Th>Plats</Th><Th>Status</Th><Th right>Dagar sedan</Th>
+                  <Th>Datum</Th><Th>Kund</Th><Th>Typ</Th><Th>Plats</Th><Th>Avtal</Th><Th>Status</Th><Th right>Dagar sedan</Th>
                 </tr>
               </thead>
               <tbody>
@@ -156,6 +158,7 @@ export default async function DashboardPage() {
                       </Td>
                       <Td>{b.fotograferingstyp?.namn || '–'}</Td>
                       <Td>{b.plats || '–'}</Td>
+                      <Td><AvtalPill status={harledAvtalStatus(b)} /></Td>
                       <Td>
                         {klickbar ? (
                           <form action={gaVidare} className="inline">
