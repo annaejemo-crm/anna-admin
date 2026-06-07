@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
 import { StatusPill } from '@/components/StatusPill';
-import { harledBokningStatus } from '@/lib/types';
+import { AvtalPill } from '@/components/AvtalPill';
+import { harledBokningStatus, harledAvtalStatus } from '@/lib/types';
 import { gaVidare } from '../bokningar/actions';
 
 const MONTH_NAMES = ['januari', 'februari', 'mars', 'april', 'maj', 'juni', 'juli', 'augusti', 'september', 'oktober', 'november', 'december'];
@@ -23,7 +24,7 @@ export default async function KunderPage(props: { searchParams?: Promise<{ ar?: 
 
   const { data } = await supabase
     .from('bokningar')
-    .select('*, kund:kunder(*), fotograferingstyp:fotograferingstyper(*)')
+    .select('*, kund:kunder(*), fotograferingstyp:fotograferingstyper(*), avtal(status)')
     .gte('datum', start)
     .lte('datum', slut)
     .order('datum', { ascending: true });
@@ -83,6 +84,7 @@ export default async function KunderPage(props: { searchParams?: Promise<{ ar?: 
               <th className="font-mono text-[10px] tracking-[0.16em] uppercase text-ink-faint py-3.5 px-5 text-left border-b border-line bg-bg font-medium">Kund</th>
               <th className="font-mono text-[10px] tracking-[0.16em] uppercase text-ink-faint py-3.5 px-5 text-left border-b border-line bg-bg font-medium">Typ</th>
               <th className="font-mono text-[10px] tracking-[0.16em] uppercase text-ink-faint py-3.5 px-5 text-left border-b border-line bg-bg font-medium">Plats</th>
+              <th className="font-mono text-[10px] tracking-[0.16em] uppercase text-ink-faint py-3.5 px-5 text-left border-b border-line bg-bg font-medium">Avtal</th>
               <th className="font-mono text-[10px] tracking-[0.16em] uppercase text-ink-faint py-3.5 px-5 text-left border-b border-line bg-bg font-medium">Status</th>
               <th className="font-mono text-[10px] tracking-[0.16em] uppercase text-ink-faint py-3.5 px-5 text-right border-b border-line bg-bg font-medium">Pris</th>
             </tr>
@@ -90,7 +92,7 @@ export default async function KunderPage(props: { searchParams?: Promise<{ ar?: 
           <tbody>
             {bokningar.length === 0 ? (
               <tr>
-                <td colSpan={6} className="p-16 text-center text-ink-faint">
+                <td colSpan={7} className="p-16 text-center text-ink-faint">
                   Inga bokningar för {valtAr}.
                 </td>
               </tr>
@@ -103,7 +105,7 @@ export default async function KunderPage(props: { searchParams?: Promise<{ ar?: 
                 );
                 return [
                   <tr key={`h-${m}`}>
-                    <td colSpan={6} className="bg-bg-subtle py-3.5 px-5 border-y border-line">
+                    <td colSpan={7} className="bg-bg-subtle py-3.5 px-5 border-y border-line">
                       <span className="font-mono text-[10.5px] tracking-[0.22em] uppercase font-medium">
                         {m}
                       </span>
@@ -135,6 +137,9 @@ export default async function KunderPage(props: { searchParams?: Promise<{ ar?: 
                         </td>
                         <td className="py-4 px-5 text-[13.5px]">{b.fotograferingstyp?.namn || '–'}</td>
                         <td className="py-4 px-5 text-[13.5px]">{b.plats || '–'}</td>
+                        <td className="py-4 px-5">
+                          <AvtalPill status={harledAvtalStatus(b)} />
+                        </td>
                         <td className="py-4 px-5">
                           {klickbar ? (
                             <form action={gaVidare} className="inline">
