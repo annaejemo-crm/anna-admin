@@ -3,7 +3,7 @@ import { StatusPill } from '@/components/StatusPill';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { togglePaid, setBildpaket } from '../actions';
-import { toggleKundgalleri } from '../../bokningar/actions';
+import { toggleKundgalleri, gaVidare } from '../../bokningar/actions';
 import { harledBokningStatus } from '@/lib/types';
 
 export default async function KundDetaljPage(props: { params: Promise<{ id: string }> }) {
@@ -109,11 +109,15 @@ export default async function KundDetaljPage(props: { params: Promise<{ id: stri
                   <td className="px-4 py-3.5">
                     {(() => {
                       const st = harledBokningStatus(b);
-                      const klickbar = st === 'vantar_galleri' || st === 'galleri_skickat';
+                      const klickbar = st === 'vantar_galleri' || st === 'galleri_skickat' || st === 'klar';
                       if (!klickbar) return <StatusPill status={st} />;
-                      const hjalp = st === 'vantar_galleri' ? 'Klicka när du skickat galleriet' : 'Klicka för att backa till Väntar på galleri';
+                      const hjalp = st === 'vantar_galleri'
+                        ? 'Klicka när du skickat galleriet'
+                        : st === 'galleri_skickat'
+                          ? 'Klicka när allt är klart'
+                          : 'Klicka för att börja om från Väntar på galleri';
                       return (
-                        <form action={toggleKundgalleri} className="inline">
+                        <form action={gaVidare} className="inline">
                           <input type="hidden" name="id" value={b.id} />
                           <input type="hidden" name="kund_id" value={kund.id} />
                           <button type="submit" title={hjalp} className="cursor-pointer hover:opacity-70 transition-opacity">
