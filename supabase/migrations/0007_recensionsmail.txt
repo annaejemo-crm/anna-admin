@@ -1,0 +1,8 @@
+-- Två nya kolumner för recensionsmail-flödet.
+-- Kör båda i Supabase SQL Editor.
+
+alter table bokningar
+  add column if not exists bokning_klar_at timestamptz;
+
+alter table bokningar
+  add column if not exists recension_mail_skickat_at timestamptz;
