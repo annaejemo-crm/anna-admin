@@ -7,7 +7,7 @@ import { skickaMail } from '@/lib/mail';
 const TACKMAIL_AMNE = 'Fakturan mottagen';
 const TACKMAIL_BRODTEXT = `Hej,
 
-Bara med detta mail bekräfta att jag tagit emot betalningen och att jag ser fram emot att ses när det är dags för fotograferingen.
+Jag vill bara med detta mail bekräfta att jag tagit emot betalningen och att jag ser fram emot att ses när det är dags för fotograferingen.
 
 Om det dyker upp några funderingar är det bara att höra av sig.
 
@@ -114,8 +114,7 @@ export async function setBildpaket(formData: FormData) {
     if (paket) {
       await supabase.from('bokningar').update({
         bildpaket_namn: paket.namn,
-        bildpaket_kr: paket.pris_kr,
-      }).eq('id', id);
+        bildpaket_kr: paket.pris_kr,\n      }).eq('id', id);
     }
   }
   revalidatePath('/admin/kunder');
