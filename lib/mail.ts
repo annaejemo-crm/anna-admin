@@ -1,9 +1,10 @@
+// Trigger redeploy efter RESEND_API_KEY-add
 'use server';
 
 /**
  * Skickar mail via Resend.
- * Avsändare: Anna Ejemo <kontakt@annaejemo.se>
- * Reply-To: kontakt@fotografannaejemo.se (så svar landar i Annas vanliga inkorg)
+ * AvsÃ¤ndare: Anna Ejemo <kontakt@annaejemo.se>
+ * Reply-To: kontakt@fotografannaejemo.se (sÃ¥ svar landar i Annas vanliga inkorg)
  */
 export async function skickaMail(opts: {
   till: string;
