@@ -114,7 +114,8 @@ export async function setBildpaket(formData: FormData) {
     if (paket) {
       await supabase.from('bokningar').update({
         bildpaket_namn: paket.namn,
-        bildpaket_kr: paket.pris_kr,\n      }).eq('id', id);
+        bildpaket_kr: paket.pris_kr,
+      }).eq('id', id);
     }
   }
   revalidatePath('/admin/kunder');
