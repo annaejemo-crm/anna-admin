@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { StatusPill } from '@/components/StatusPill';
 import { AvtalPill } from '@/components/AvtalPill';
 import { harledBokningStatus, harledAvtalStatus } from '@/lib/types';
-import { gaVidare } from '../bokningar/actions';
+import { gaVidare, skickaRecensionsmail } from '../bokningar/actions';
 
 const MONTH_NAMES = ['januari', 'februari', 'mars', 'april', 'maj', 'juni', 'juli', 'augusti', 'september', 'oktober', 'november', 'december'];
 
@@ -141,17 +141,40 @@ export default async function KunderPage(props: { searchParams?: Promise<{ ar?: 
                           <AvtalPill status={harledAvtalStatus(b)} />
                         </td>
                         <td className="py-4 px-5">
-                          {klickbar ? (
-                            <form action={gaVidare} className="inline">
-                              <input type="hidden" name="id" value={b.id} />
-                              <input type="hidden" name="kund_id" value={b.kund_id} />
-                              <button type="submit" title={hjalp} className="cursor-pointer hover:opacity-70 transition-opacity">
-                                <StatusPill status={st} />
-                              </button>
-                            </form>
-                          ) : (
-                            <StatusPill status={st} />
-                          )}
+                          <div className="flex items-center gap-3">
+                            {klickbar ? (
+                              <form action={gaVidare} className="inline">
+                                <input type="hidden" name="id" value={b.id} />
+                                <input type="hidden" name="kund_id" value={b.kund_id} />
+                                <button type="submit" title={hjalp} className="cursor-pointer hover:opacity-70 transition-opacity">
+                                  <StatusPill status={st} />
+                                </button>
+                              </form>
+                            ) : (
+                              <StatusPill status={st} />
+                            )}
+                            {b.bokning_klar && b.kund?.email && !b.recension_mail_skickat_at && (
+                              <form action={skickaRecensionsmail} className="inline">
+                                <input type="hidden" name="id" value={b.id} />
+                                <input type="hidden" name="kund_id" value={b.kund_id} />
+                                <button
+                                  type="submit"
+                                  title="Skickar ett mail till kunden med Google-recensionslänken"
+                                  className="text-[11.5px] text-ink-muted hover:text-ink underline underline-offset-2"
+                                >
+                                  Be om recension
+                                </button>
+                              </form>
+                            )}
+                            {b.bokning_klar && b.recension_mail_skickat_at && (
+                              <span
+                                className="text-[11.5px] text-sage"
+                                title={`Recensionsmail skickat ${new Date(b.recension_mail_skickat_at).toLocaleDateString('sv-SE')}`}
+                              >
+                                Recension skickad
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="font-mono text-[12.5px] text-right py-4 px-5">
                           {((b.bokningsavgift_kr || 0) + (b.bildpaket_kr || 0)).toLocaleString('sv-SE')} kr
@@ -163,8 +186,8 @@ export default async function KunderPage(props: { searchParams?: Promise<{ ar?: 
               })
             )}
           </tbody>
-        </table>
-      </div>
+      </table>
+    </div>
     </>
   );
 }
