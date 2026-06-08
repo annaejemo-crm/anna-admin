@@ -133,7 +133,7 @@ export default async function KundDetaljPage(props: { params: Promise<{ id: stri
                     })()}
                   </td>
                   <td className="px-4 py-3.5 text-right">
-                    <PaidCell id={b.id} kundId={kund.id} kind="avgift" belopp={b.bokningsavgift_kr || 0} betald={!!b.bokningsavgift_betald} />
+                    <PaidCell id={b.id} kundId={kund.id} kind="avgift" belopp={b.bokningsavgift_kr || 0} betald={!!b.bokningsavgift_betald} fakturerad={!!b.bokningsavgift_fakturerad} />
                   </td>
                   <td className="px-4 py-3.5">
                     <BildpaketCell bokning={b} kundId={kund.id} paketLista={paket} />
@@ -186,16 +186,32 @@ function SumCard(props: { label: string; total: number; inkommet: number }) {
   );
 }
 
-function PaidCell(props: { id: string; kundId: string; kind: 'avgift' | 'paket'; belopp: number; betald: boolean }) {
+function PaidCell(props: { id: string; kundId: string; kind: 'avgift' | 'paket'; belopp: number; betald: boolean; fakturerad?: boolean }) {
   if (props.belopp === 0) return <span className="text-ink-faint text-[12px]">—</span>;
-  const dotColor = props.betald ? 'bg-positive' : 'bg-line';
+  let dotColor: string;
+  let hjalp: string;
+  if (props.kind === 'avgift') {
+    if (props.betald) {
+      dotColor = 'bg-positive';
+      hjalp = 'Betald. Klicka för att börja om.';
+    } else if (props.fakturerad) {
+      dotColor = 'bg-warn';
+      hjalp = 'Faktura skickad. Klicka när betalningen är mottagen — då skickas ett tackmail till kunden automatiskt.';
+    } else {
+      dotColor = 'bg-line';
+      hjalp = 'Inget gjort. Klicka när du skickat fakturan.';
+    }
+  } else {
+    dotColor = props.betald ? 'bg-positive' : 'bg-line';
+    hjalp = props.betald ? 'Betald (klicka för att avmarkera)' : 'Ej betald (klicka för att markera)';
+  }
   return (
     <form action={togglePaid} className="inline-flex items-center gap-2 justify-end">
       <input type="hidden" name="id" value={props.id} />
       <input type="hidden" name="kind" value={props.kind} />
       <input type="hidden" name="kundId" value={props.kundId} />
       <span className="font-mono text-[12.5px]">{props.belopp.toLocaleString('sv-SE')} kr</span>
-      <button type="submit" title={props.betald ? 'Betald (klicka för att avmarkera)' : 'Ej betald (klicka för att markera)'} className={`w-2.5 h-2.5 rounded-full ${dotColor} hover:scale-125 transition-transform`} />
+      <button type="submit" title={hjalp} className={`w-2.5 h-2.5 rounded-full ${dotColor} hover:scale-125 transition-transform`} />
     </form>
   );
 }
