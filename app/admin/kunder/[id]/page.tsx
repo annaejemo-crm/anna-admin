@@ -3,7 +3,7 @@ import { StatusPill } from '@/components/StatusPill';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { togglePaid, setBildpaket } from '../actions';
-import { toggleKundgalleri, gaVidare } from '../../bokningar/actions';
+import { toggleKundgalleri, gaVidare, skickaRecensionsmail } from '../../bokningar/actions';
 import { harledBokningStatus, harledAvtalStatus } from '@/lib/types';
 import { AvtalPill } from '@/components/AvtalPill';
 
@@ -145,7 +145,8 @@ export default async function KundDetaljPage(props: { params: Promise<{ id: stri
                     {((b.bokningsavgift_kr || 0) + (b.bildpaket_kr || 0)).toLocaleString('sv-SE')} kr
                   </td>
                   <td className="px-4 py-3.5 text-right">
-                    <div className="flex gap-3 justify-end">
+                    <div className="flex gap-3 justify-end items-center">
+                      <RecensionsLank b={b} kundId={kund.id} kundEmail={kund.email} />
                       <Link
                         href={`/admin/bokningar/${b.id}/avtal`}
                         className="text-[12px] text-ink-muted hover:text-ink underline underline-offset-2"
@@ -227,6 +228,38 @@ function GalleriCell(props: { id: string; kundId: string; skickat: boolean; skic
       <input type="hidden" name="kund_id" value={props.kundId} />
       <button type="submit" title={titel} className={`w-2.5 h-2.5 rounded-full ${dotColor} hover:scale-125 transition-transform`} />
       <span className="text-[11.5px] text-ink-muted">{props.skickat ? 'Skickat' : 'Ej skickat'}</span>
+    </form>
+  );
+}
+
+function RecensionsLank(props: { b: any; kundId: string; kundEmail: string | null }) {
+  if (!props.b.bokning_klar) return null;
+  if (!props.kundEmail) {
+    return (
+      <span className="text-[12px] text-ink-faint italic" title="Kunden saknar email">
+        Saknar email
+      </span>
+    );
+  }
+  if (props.b.recension_mail_skickat_at) {
+    const datum = new Date(props.b.recension_mail_skickat_at).toLocaleDateString('sv-SE');
+    return (
+      <span className="text-[12px] text-sage" title={`Recensionsmail skickat ${datum}`}>
+        Recension skickad
+      </span>
+    );
+  }
+  return (
+    <form action={skickaRecensionsmail} className="inline">
+      <input type="hidden" name="id" value={props.b.id} />
+      <input type="hidden" name="kund_id" value={props.kundId} />
+      <button
+        type="submit"
+        title="Skickar ett mail till kunden med Google-recensionslänken"
+        className="text-[12px] text-ink-muted hover:text-ink underline underline-offset-2"
+      >
+        Be om recension
+      </button>
     </form>
   );
 }
