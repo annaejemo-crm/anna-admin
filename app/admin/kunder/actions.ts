@@ -68,11 +68,15 @@ export async function togglePaid(formData: FormData) {
           .eq('id', kundIdLokal)
           .maybeSingle();
         if (kund && kund.email) {
-          await skickaMail({
+          console.log('[automail] försöker skicka till', kund.email);
+          const mailRes = await skickaMail({
             till: kund.email,
             amne: TACKMAIL_AMNE,
             brodtext: TACKMAIL_BRODTEXT,
           });
+          console.log('[automail] resultat', JSON.stringify(mailRes));
+        } else {
+          console.log('[automail] hoppar - ingen kund-email', { kundIdLokal, hasKund: !!kund });
         }
       }
     } else {
