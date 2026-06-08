@@ -4,7 +4,8 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { togglePaid, setBildpaket } from '../actions';
 import { toggleKundgalleri, gaVidare } from '../../bokningar/actions';
-import { harledBokningStatus } from '@/lib/types';
+import { harledBokningStatus, harledAvtalStatus } from '@/lib/types';
+import { AvtalPill } from '@/components/AvtalPill';
 
 export default async function KundDetaljPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
@@ -21,7 +22,7 @@ export default async function KundDetaljPage(props: { params: Promise<{ id: stri
 
   const { data: bokningarRaw } = await supabase
     .from('bokningar')
-    .select('*, fotograferingstyp:fotograferingstyper(namn)')
+    .select('*, fotograferingstyp:fotograferingstyper(namn), avtal(status)')
     .eq('kund_id', id)
     .order('datum', { ascending: false });
 
@@ -89,6 +90,7 @@ export default async function KundDetaljPage(props: { params: Promise<{ id: stri
               <th className="px-4 py-3 font-medium">Datum</th>
               <th className="px-4 py-3 font-medium">Typ</th>
               <th className="px-4 py-3 font-medium">Plats</th>
+              <th className="px-4 py-3 font-medium">Avtal</th>
               <th className="px-4 py-3 font-medium">Status</th>
               <th className="px-4 py-3 font-medium text-right">Avgift</th>
               <th className="px-4 py-3 font-medium">Bildpaket</th>
@@ -99,13 +101,16 @@ export default async function KundDetaljPage(props: { params: Promise<{ id: stri
           </thead>
           <tbody>
             {bokningar.length === 0 ? (
-              <tr><td colSpan={9} className="px-4 py-10 text-center text-ink-faint">Inga bokningar för denna kund.</td></tr>
+              <tr><td colSpan={10} className="px-4 py-10 text-center text-ink-faint">Inga bokningar för denna kund.</td></tr>
             ) : bokningar.map(function(b: any) {
               return (
                 <tr key={b.id} className="border-t border-line-soft hover:bg-bg-subtle/40">
                   <td className="px-4 py-3.5 font-mono text-[12px] text-ink-muted">{b.datum || 'inget datum'}</td>
                   <td className="px-4 py-3.5">{b.fotograferingstyp?.namn || ''}</td>
                   <td className="px-4 py-3.5 text-ink-muted">{b.plats || ''}</td>
+                  <td className="px-4 py-3.5">
+                    <AvtalPill status={harledAvtalStatus(b)} />
+                  </td>
                   <td className="px-4 py-3.5">
                     {(() => {
                       const st = harledBokningStatus(b);
