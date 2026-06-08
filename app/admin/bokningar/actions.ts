@@ -3,6 +3,20 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { skickaMail } from '@/lib/mail';
+
+const GOOGLE_REVIEW_URL = 'https://g.page/r/CYzaSIzh9wxIEBM/review';
+const RECENSIONSMAIL_AMNE = 'Tack för att du valde mig';
+const RECENSIONSMAIL_BRODTEXT_BASE = `,
+
+Hoppas du är nöjd med bilderna! Det betyder enormt mycket för mig som liten verksamhet om du har en stund över att lämna en kort recension på Google. Det hjälper andra att hitta mig och är det bästa sättet jag kan växa på.
+
+Här är länken: ${GOOGLE_REVIEW_URL}
+
+Tack på förhand.
+
+Varma hälsningar
+Anna`;
 
 export async function updateBokning(formData: FormData) {
   const supabase = await createClient();
@@ -93,14 +107,20 @@ export async function gaVidare(formData: FormData) {
   if (!b) return;
 
   if (b.bokning_klar) {
+    // Tillbaka från klar: nollställ klar-timestamp så recensionsmail-cronen
+    // inte räknar gamla bokningar som klara igen.
     await supabase.from('bokningar').update({
       bokning_klar: false,
+      bokning_klar_at: null,
       kundgalleri_skickat: false,
       kundgalleri_skickat_at: null,
     }).eq('id', id);
   } else if (b.kundgalleri_skickat) {
+    // Galleri skickat → klar. Spara timestamp så cron kan vänta X dagar
+    // innan recensionsmail går iväg.
     await supabase.from('bokningar').update({
       bokning_klar: true,
+      bokning_klar_at: new Date().toISOString(),
     }).eq('id', id);
   } else {
     await supabase.from('bokningar').update({
@@ -111,6 +131,60 @@ export async function gaVidare(formData: FormData) {
 
   if (kund_id) revalidatePath(`/admin/kunder/${kund_id}`);
   revalidatePath('/admin');
+  revalidatePath('/admin/kunder');
+}
+
+/**
+ * Skickar recensionsmail manuellt till kunden för en specifik bokning.
+ * Anna klickar själv när hon vill be om recension.
+ * Sätter recension_mail_skickat_at så knappen syns som klar i UI.
+ */
+export async function skickaRecensionsmail(formData: FormData) {
+  const supabase = await createClient();
+  const id = String(formData.get('id') || '');
+  const kund_id = String(formData.get('kund_id') || '');
+  if (!id) return;
+
+  const { data: bokning } = await supabase
+    .from('bokningar')
+    .select('id, kund_id, recension_mail_skickat_at')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (!bokning) return;
+  if (bokning.recension_mail_skickat_at) {
+    // Redan skickat. Inget mer att göra.
+    return;
+  }
+
+  const kundIdLokal = bokning.kund_id;
+  if (!kundIdLokal) return;
+
+  const { data: kund } = await supabase
+    .from('kunder')
+    .select('email, fornamn')
+    .eq('id', kundIdLokal)
+    .maybeSingle();
+
+  if (!kund || !kund.email) return;
+
+  const fornamn = kund.fornamn || '';
+  const brodtext = `Hej${fornamn ? ' ' + fornamn : ''}${RECENSIONSMAIL_BRODTEXT_BASE}`;
+
+  const res = await skickaMail({
+    till: kund.email,
+    amne: RECENSIONSMAIL_AMNE,
+    brodtext: brodtext,
+  });
+
+  if (res.ok) {
+    await supabase
+      .from('bokningar')
+      .update({ recension_mail_skickat_at: new Date().toISOString() })
+      .eq('id', id);
+  }
+
+  if (kund_id) revalidatePath(`/admin/kunder/${kund_id}`);
   revalidatePath('/admin/kunder');
 }
 
