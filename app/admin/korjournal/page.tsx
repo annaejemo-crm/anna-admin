@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { raderaKorjournalpost, skapaKorjournalpost, sparaMatarstallning } from './actions';
+import { raderaKorjournalpost, skapaKorjournalpost, sparaMatarstallning, synkaKorjournalFranBokningar, uppdateraKorjournalpost } from './actions';
 
 const MILERSATTNING_KR_PER_MIL = 25;
 const MONTH_NAMES = ['januari', 'februari', 'mars', 'april', 'maj', 'juni', 'juli', 'augusti', 'september', 'oktober', 'november', 'december'];
@@ -30,7 +30,7 @@ export default async function KorjournalPage(props: { searchParams?: Promise<{ a
     .select('*')
     .gte('datum', start)
     .lte('datum', slut)
-    .order('datum', { ascending: false });
+    .order('datum', { ascending: true });
 
   const poster = (data || []) as any[];
 
@@ -58,12 +58,23 @@ export default async function KorjournalPage(props: { searchParams?: Promise<{ a
               Resor fylls i automatiskt när en bokning markeras KLAR och har avstånd. Du kan också lägga till manuella resor nedan. Skicka filen till din revisor i slutet av månaden.
             </p>
           </div>
-          <a
-            href={`/admin/korjournal/export?ar=${valtAr}`}
-            className="text-sm px-4 py-2 border border-line-soft rounded-sm hover:border-ink transition-colors"
-          >
-            Exportera till Excel
-          </a>
+          <div className="flex items-center gap-2">
+            <form action={synkaKorjournalFranBokningar}>
+              <button
+                type="submit"
+                className="text-sm px-4 py-2 border border-line-soft rounded-sm hover:border-ink transition-colors"
+                title="Hämta in klara bokningar som ännu inte finns i körjournalen"
+              >
+                Synka från bokningar
+              </button>
+            </form>
+            <a
+              href={`/admin/korjournal/export?ar=${valtAr}`}
+              className="text-sm px-4 py-2 border border-line-soft rounded-sm hover:border-ink transition-colors"
+            >
+              Exportera till Excel
+            </a>
+          </div>
         </div>
       </div>
 
@@ -127,53 +138,32 @@ export default async function KorjournalPage(props: { searchParams?: Promise<{ a
         </details>
       </section>
 
-      {/* Manuell post */}
+      {/* Lägg till ny rad. Öppet direkt så det är som en excel-rad. */}
       <section className="bg-white border border-line-soft rounded-sm p-5 mb-8">
-        <details>
-          <summary className="cursor-pointer text-sm">
-            <span className="eyebrow">+ Lägg till resa manuellt</span>
-            <span className="text-ink-muted text-[12px] ml-3">
-              För resor som inte kommer från bokningar (möte, hämta material osv)
-            </span>
-          </summary>
-          <form action={skapaKorjournalpost} className="mt-5 space-y-4">
-            <div className="grid grid-cols-[160px_1fr] gap-4">
-              <div>
-                <label className="block text-[11px] uppercase tracking-wider text-ink-muted mb-1.5">Datum</label>
-                <input type="date" name="datum" required defaultValue={idagDatum} className="w-full px-3 py-2 border border-line-soft rounded-sm text-sm" />
-              </div>
-              <div>
-                <label className="block text-[11px] uppercase tracking-wider text-ink-muted mb-1.5">Syfte</label>
-                <input type="text" name="syfte" required placeholder="t.ex. Möte med kund, Hämta material" className="w-full px-3 py-2 border border-line-soft rounded-sm text-sm" />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-[11px] uppercase tracking-wider text-ink-muted mb-1.5">Plats (namn)</label>
-                <input type="text" name="plats_namn" placeholder="t.ex. Frölundavägen 3" className="w-full px-3 py-2 border border-line-soft rounded-sm text-sm" />
-              </div>
-              <div>
-                <label className="block text-[11px] uppercase tracking-wider text-ink-muted mb-1.5">Adress</label>
-                <input type="text" name="plats_adress" placeholder="Gata, ort" className="w-full px-3 py-2 border border-line-soft rounded-sm text-sm" />
-              </div>
-            </div>
-            <div className="grid grid-cols-[200px_1fr] gap-4">
-              <div>
-                <label className="block text-[11px] uppercase tracking-wider text-ink-muted mb-1.5">Antal km (tur och retur)</label>
-                <input type="text" name="antal_km" required inputMode="decimal" placeholder="t.ex. 15,2" className="w-full px-3 py-2 border border-line-soft rounded-sm text-sm" />
-              </div>
-              <div>
-                <label className="block text-[11px] uppercase tracking-wider text-ink-muted mb-1.5">Medföljande (valfritt)</label>
-                <input type="text" name="medfoljande" placeholder="t.ex. Sophie Annik" className="w-full px-3 py-2 border border-line-soft rounded-sm text-sm" />
-              </div>
-            </div>
-            <div className="flex justify-end pt-2">
-              <button type="submit" className="px-5 py-2 bg-ink text-bg text-sm rounded-sm">
-                Spara resa
-              </button>
-            </div>
-          </form>
-        </details>
+        <div className="eyebrow mb-3">Lägg till resa</div>
+        <form action={skapaKorjournalpost} className="grid grid-cols-[110px_1fr_1.4fr_1fr_90px_auto] gap-2 items-end">
+          <div>
+            <label className="block text-[10px] uppercase tracking-wider text-ink-muted mb-1">Datum</label>
+            <input type="date" name="datum" required defaultValue={idagDatum} className="w-full px-2 py-2 border border-line-soft rounded-sm text-sm" />
+          </div>
+          <div>
+            <label className="block text-[10px] uppercase tracking-wider text-ink-muted mb-1">Syfte</label>
+            <input type="text" name="syfte" required defaultValue="Fotografering" className="w-full px-2 py-2 border border-line-soft rounded-sm text-sm" />
+          </div>
+          <div>
+            <label className="block text-[10px] uppercase tracking-wider text-ink-muted mb-1">Plats / Adress</label>
+            <input type="text" name="plats_namn" placeholder="t.ex. Frölundavägen 3" className="w-full px-2 py-2 border border-line-soft rounded-sm text-sm" />
+          </div>
+          <div>
+            <label className="block text-[10px] uppercase tracking-wider text-ink-muted mb-1">Kund</label>
+            <input type="text" name="medfoljande" placeholder="Namn" className="w-full px-2 py-2 border border-line-soft rounded-sm text-sm" />
+          </div>
+          <div>
+            <label className="block text-[10px] uppercase tracking-wider text-ink-muted mb-1">Km (T/R)</label>
+            <input type="text" name="antal_km" inputMode="decimal" placeholder="0" className="w-full px-2 py-2 border border-line-soft rounded-sm text-sm" />
+          </div>
+          <button type="submit" className="px-4 py-2 bg-ink text-bg text-sm rounded-sm">Spara</button>
+        </form>
       </section>
 
       {poster.length === 0 ? (
@@ -207,41 +197,59 @@ export default async function KorjournalPage(props: { searchParams?: Promise<{ a
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-left text-[11px] uppercase tracking-wider text-ink-muted">
-                      <th className="px-5 py-2.5 font-medium">Datum</th>
-                      <th className="px-5 py-2.5 font-medium">Syfte</th>
-                      <th className="px-5 py-2.5 font-medium">Plats / Adress</th>
-                      <th className="px-5 py-2.5 font-medium">Medföljande</th>
-                      <th className="px-5 py-2.5 font-medium text-right">Km (T/R)</th>
-                      <th className="px-5 py-2.5 font-medium" />
+                      <th className="px-3 py-2.5 font-medium w-[110px]">Datum</th>
+                      <th className="px-3 py-2.5 font-medium">Syfte</th>
+                      <th className="px-3 py-2.5 font-medium">Plats / Adress</th>
+                      <th className="px-3 py-2.5 font-medium">Kund</th>
+                      <th className="px-3 py-2.5 font-medium text-right w-[110px]">Km (T/R)</th>
+                      <th className="px-3 py-2.5 font-medium w-[70px]" />
                     </tr>
                   </thead>
                   <tbody>
                     {matchande.map((p: any) => (
                       <tr key={p.id} className="border-t border-line-soft">
-                        <td className="px-5 py-3 font-mono text-[12px] text-ink-muted whitespace-nowrap">
-                          {new Date(p.datum).toLocaleDateString('sv-SE')}
-                        </td>
-                        <td className="px-5 py-3">{p.syfte}</td>
-                        <td className="px-5 py-3 text-ink-muted">
-                          {p.plats_namn || '—'}
-                          {p.plats_adress && (
-                            <span className="text-[11px] text-ink-faint ml-1">({p.plats_adress})</span>
-                          )}
-                        </td>
-                        <td className="px-5 py-3 text-ink-muted text-[12.5px]">{p.medfoljande || '—'}</td>
-                        <td className="px-5 py-3 text-right font-mono text-[12.5px]">
-                          {Number(p.antal_km).toLocaleString('sv-SE')} km
-                        </td>
-                        <td className="px-5 py-3 text-right">
-                          <form action={raderaKorjournalpost} className="inline">
+                        <td colSpan={6} className="p-0">
+                          <form action={uppdateraKorjournalpost} className="grid grid-cols-[110px_1fr_1.4fr_1fr_110px_70px] gap-0 items-stretch">
                             <input type="hidden" name="id" value={p.id} />
-                            <button
-                              type="submit"
-                              className="text-[11px] text-ink-faint hover:text-danger"
-                              title="Radera denna rad"
-                            >
-                              Radera
-                            </button>
+                            <input type="hidden" name="plats_adress" defaultValue={p.plats_adress || ''} />
+                            <input
+                              type="date"
+                              name="datum"
+                              defaultValue={p.datum ? new Date(p.datum).toISOString().slice(0, 10) : ''}
+                              className="px-3 py-3 font-mono text-[12px] bg-transparent hover:bg-bg-subtle focus:bg-white focus:outline-1 focus:outline focus:outline-ink"
+                            />
+                            <input
+                              type="text"
+                              name="syfte"
+                              defaultValue={p.syfte || ''}
+                              className="px-3 py-3 text-sm bg-transparent hover:bg-bg-subtle focus:bg-white focus:outline-1 focus:outline focus:outline-ink"
+                            />
+                            <input
+                              type="text"
+                              name="plats_namn"
+                              defaultValue={p.plats_namn || ''}
+                              placeholder="Plats"
+                              className="px-3 py-3 text-sm text-ink-muted bg-transparent hover:bg-bg-subtle focus:bg-white focus:outline-1 focus:outline focus:outline-ink"
+                            />
+                            <input
+                              type="text"
+                              name="medfoljande"
+                              defaultValue={p.medfoljande || ''}
+                              placeholder="Kund"
+                              className="px-3 py-3 text-[12.5px] text-ink-muted bg-transparent hover:bg-bg-subtle focus:bg-white focus:outline-1 focus:outline focus:outline-ink"
+                            />
+                            <input
+                              type="text"
+                              name="antal_km"
+                              inputMode="decimal"
+                              defaultValue={p.antal_km != null ? String(Number(p.antal_km)).replace('.', ',') : ''}
+                              placeholder="0"
+                              className="px-3 py-3 text-right font-mono text-[12.5px] bg-transparent hover:bg-bg-subtle focus:bg-white focus:outline-1 focus:outline focus:outline-ink"
+                            />
+                            <div className="flex items-center justify-end gap-2 pr-3">
+                              <button type="submit" className="text-[11px] text-ink-faint hover:text-ink" title="Spara ändringar">Spara</button>
+                              <button type="submit" formAction={raderaKorjournalpost} className="text-[11px] text-ink-faint hover:text-danger" title="Radera raden">×</button>
+                            </div>
                           </form>
                         </td>
                       </tr>
