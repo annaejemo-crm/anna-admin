@@ -1,0 +1,63 @@
+-- Platser, körjournal och inställningar för milersättning.
+-- Kör hela blocket i Supabase SQL Editor.
+
+-- Platser som Anna återkommer till
+create table if not exists platser (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade,
+  namn text not null,
+  adress text,
+  avstand_km_enkel numeric(6, 2),
+  anteckning text,
+  aktiv boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+alter table platser enable row level security;
+
+drop policy if exists "Anna kan se sina platser" on platser;
+create policy "Anna kan se sina platser" on platser
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- Koppla bokningar till plats och spara avstånd
+alter table bokningar
+  add column if not exists plats_id uuid references platser(id) on delete set null;
+
+alter table bokningar
+  add column if not exists avstand_km_enkel numeric(6, 2);
+
+-- Körjournal
+create table if not exists korjournal (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade,
+  bokning_id uuid references bokningar(id) on delete set null,
+  datum date not null,
+  syfte text not null,
+  plats_namn text,
+  plats_adress text,
+  antal_km numeric(8, 2) not null,
+  anteckning text,
+  created_at timestamptz not null default now()
+);
+
+alter table korjournal enable row level security;
+
+drop policy if exists "Anna kan se sina körjournalposter" on korjournal;
+create policy "Anna kan se sina körjournalposter" on korjournal
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create index if not exists korjournal_datum_idx on korjournal(user_id, datum desc);
+
+-- Enkel inställning för milersättning. En rad per användare.
+create table if not exists installningar (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  hemadress text,
+  milersattning_kr numeric(6, 2) not null default 25,
+  uppdaterad_at timestamptz not null default now()
+);
+
+alter table installningar enable row level security;
+
+drop policy if exists "Anna kan se sina inställningar" on installningar;
+create policy "Anna kan se sina inställningar" on installningar
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
