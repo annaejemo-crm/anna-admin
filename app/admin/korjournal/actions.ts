@@ -31,8 +31,8 @@ export async function skapaKorjournalpost(formData: FormData) {
   const medfoljande = String(formData.get('medfoljande') || '').trim() || null;
 
   const kmRaw = String(formData.get('antal_km') || '').replace(',', '.').trim();
-  const antal_km = kmRaw ? parseFloat(kmRaw) : NaN;
-  if (Number.isNaN(antal_km) || antal_km <= 0) return;
+  const antal_km_parsed = kmRaw ? parseFloat(kmRaw) : NaN;
+  const antal_km = Number.isNaN(antal_km_parsed) ? null : antal_km_parsed;
 
   await supabase.from('korjournal').insert({
     user_id: user.id,
@@ -45,6 +45,114 @@ export async function skapaKorjournalpost(formData: FormData) {
   });
 
   revalidatePath('/admin/korjournal');
+}
+
+/**
+ * Uppdatera en befintlig körjournal-rad. Anna kan ändra datum, syfte,
+ * plats, km och kund direkt på raden.
+ */
+export async function uppdateraKorjournalpost(formData: FormData) {
+  const supabase = await createClient();
+  const id = String(formData.get('id') || '');
+  if (!id) return;
+
+  const datum = String(formData.get('datum') || '').trim();
+  const syfte = String(formData.get('syfte') || '').trim();
+  const plats_namn = String(formData.get('plats_namn') || '').trim() || null;
+  const plats_adress = String(formData.get('plats_adress') || '').trim() || null;
+  const medfoljande = String(formData.get('medfoljande') || '').trim() || null;
+  const kmRaw = String(formData.get('antal_km') || '').replace(',', '.').trim();
+  const antal_km_parsed = kmRaw ? parseFloat(kmRaw) : NaN;
+  const antal_km = Number.isNaN(antal_km_parsed) ? null : antal_km_parsed;
+
+  const update: any = { plats_namn, plats_adress, medfoljande, antal_km };
+  if (datum) update.datum = datum;
+  if (syfte) update.syfte = syfte;
+
+  await supabase.from('korjournal').update(update).eq('id', id);
+  revalidatePath('/admin/korjournal');
+}
+
+/**
+ * Synka körjournal från bokningar vars datum har passerat (eller är idag).
+ * Skapar rader även när avstånd saknas så Anna kan fylla i km själv.
+ * Syfte är alltid "Fotografering". Kunden hamnar i Kund-kolumnen.
+ */
+export async function synkaKorjournalFranBokningar() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { skapade: 0 };
+
+  const idag = new Date().toISOString().slice(0, 10);
+
+  // 1. Koppla bokningar till platser där text matchar (om plats_id saknas)
+  const { data: platser } = await supabase
+    .from('platser')
+    .select('id, namn, avstand_km_enkel, adress')
+    .not('avstand_km_enkel', 'is', null);
+
+  const { data: utanPlatsId } = await supabase
+    .from('bokningar')
+    .select('id, plats')
+    .is('plats_id', null)
+    .not('plats', 'is', null);
+
+  for (const b of (utanPlatsId || []) as any[]) {
+    const bp = String(b.plats || '').toLowerCase();
+    const match = (platser || []).find((p: any) => {
+      const pn = String(p.namn || '').toLowerCase();
+      return bp.includes(pn) || pn.includes(bp);
+    });
+    if (match) {
+      await supabase
+        .from('bokningar')
+        .update({ plats_id: match.id, avstand_km_enkel: match.avstand_km_enkel })
+        .eq('id', b.id);
+    }
+  }
+
+  // 2. Hämta alla bokningar där datum har passerat
+  const { data: passerade } = await supabase
+    .from('bokningar')
+    .select('id, datum, plats, adress, avstand_km_enkel, plats_id, kund:kunder(fornamn, efternamn, foretagsnamn), plats_ref:platser!plats_id(namn, adress)')
+    .lte('datum', idag)
+    .not('datum', 'is', null);
+
+  // 3. Hämta vilka bokning_id som redan finns i körjournal
+  const { data: befintliga } = await supabase
+    .from('korjournal')
+    .select('bokning_id')
+    .not('bokning_id', 'is', null);
+  const finns = new Set((befintliga || []).map((r: any) => r.bokning_id));
+
+  // 4. Skapa rader för de som saknas
+  let skapade = 0;
+  for (const b of (passerade || []) as any[]) {
+    if (finns.has(b.id)) continue;
+    const kund: any = b.kund;
+    const platsRef: any = b.plats_ref;
+    const kundNamn = kund?.foretagsnamn || `${kund?.fornamn || ''} ${kund?.efternamn || ''}`.trim();
+    const platsNamn = platsRef?.namn || b.plats || null;
+    const platsAdress = platsRef?.adress || b.adress || null;
+    const km = b.avstand_km_enkel && Number(b.avstand_km_enkel) > 0
+      ? Number(b.avstand_km_enkel) * 2
+      : null;
+
+    const { error } = await supabase.from('korjournal').insert({
+      user_id: user.id,
+      bokning_id: b.id,
+      datum: b.datum,
+      syfte: 'Fotografering',
+      plats_namn: platsNamn,
+      plats_adress: platsAdress,
+      antal_km: km,
+      medfoljande: kundNamn || null,
+    });
+    if (!error) skapade++;
+  }
+
+  revalidatePath('/admin/korjournal');
+  return { skapade };
 }
 
 /**
