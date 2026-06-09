@@ -84,6 +84,7 @@ export default async function RedigeraBokningPage(props: { params: Promise<{ id:
             initialPlatsId={bokning.plats_id}
             initialPlats={bokning.plats || ''}
             initialAdress={bokning.adress || ''}
+            initialAvstandKmEnkel={bokning.avstand_km_enkel != null ? Number(bokning.avstand_km_enkel) : null}
           />
         </Section>
 
