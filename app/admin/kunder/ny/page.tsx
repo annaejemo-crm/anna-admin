@@ -1,17 +1,36 @@
-export default function NyKundPage() {
+import { createClient } from '@/lib/supabase/server';
+import { NyBokningForm } from './NyBokningForm';
+
+export default async function NyKundPage() {
+  const supabase = await createClient();
+
+  const { data: kunderRaw } = await supabase
+    .from('kunder')
+    .select('id, fornamn, efternamn, foretagsnamn, email')
+    .order('fornamn', { ascending: true });
+
+  const { data: typerRaw } = await supabase
+    .from('fotograferingstyper')
+    .select('id, namn')
+    .order('namn', { ascending: true });
+
+  const kunder = (kunderRaw || []).map((k: any) => ({
+    id: k.id,
+    label: k.foretagsnamn
+      ? k.foretagsnamn
+      : `${k.fornamn || ''} ${k.efternamn || ''}`.trim(),
+    email: k.email || '',
+  }));
+
+  const typer = (typerRaw || []).map((t: any) => ({ id: t.id, namn: t.namn }));
+
   return (
     <>
       <div className="mb-10 pb-6 border-b border-line">
         <div className="eyebrow mb-1.5">Ny kund och bokning</div>
         <h1 className="font-serif text-[42px] font-light leading-tight">Skapa ny bokning</h1>
       </div>
-      <div className="bg-white border border-dashed border-line p-16 rounded-sm text-center text-ink-muted">
-        <p className="font-serif text-xl mb-2 text-ink">Formulär byggs nästa session</p>
-        <p className="text-sm">
-          Här kommer ett formulär för att skapa en ny kund (eller välja befintlig)
-          <br />och samtidigt lägga in en bokning med datum, plats, typ och bokningsavgift.
-        </p>
-      </div>
+      <NyBokningForm kunder={kunder} typer={typer} />
     </>
   );
 }
