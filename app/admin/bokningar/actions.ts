@@ -43,11 +43,34 @@ export async function updateBokning(formData: FormData) {
   const intern_anteckning = String(formData.get('intern_anteckning') || '') || null;
   const visma_fakturanr = String(formData.get('visma_fakturanr') || '') || null;
 
+  // Plats kan vara vald från listan eller frihandstext
+  const plats_id_raw = String(formData.get('plats_id') || '');
+  const plats_id = plats_id_raw && plats_id_raw !== 'fri' ? plats_id_raw : null;
+
+  // Om en plats valts från listan: hämta dess avstånd och använd platsens namn/adress
+  let plats_namn = plats;
+  let plats_adress = adress;
+  let avstand_km_enkel: number | null = null;
+  if (plats_id) {
+    const { data: p } = await supabase
+      .from('platser')
+      .select('namn, adress, avstand_km_enkel')
+      .eq('id', plats_id)
+      .maybeSingle();
+    if (p) {
+      plats_namn = p.namn;
+      plats_adress = p.adress || adress;
+      avstand_km_enkel = p.avstand_km_enkel != null ? Number(p.avstand_km_enkel) : null;
+    }
+  }
+
   await supabase.from('bokningar').update({
     datum: datum,
     tid: tid,
-    plats: plats,
-    adress: adress,
+    plats: plats_namn,
+    adress: plats_adress,
+    plats_id,
+    avstand_km_enkel,
     fotograferingstyp_id: fotograferingstyp_id,
     status: status,
     bokningsavgift_kr: bokningsavgift_kr,
@@ -95,12 +118,13 @@ export async function toggleKundgalleri(formData: FormData) {
  */
 export async function gaVidare(formData: FormData) {
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
   const id = String(formData.get('id') || '');
   const kund_id = String(formData.get('kund_id') || '');
 
   const { data: b } = await supabase
     .from('bokningar')
-    .select('kundgalleri_skickat, bokning_klar')
+    .select('kundgalleri_skickat, bokning_klar, datum, avstand_km_enkel, plats, kund:kunder(fornamn, efternamn, foretagsnamn), fotograferingstyp:fotograferingstyper(namn), plats_ref:platser!plats_id(namn, adress)')
     .eq('id', id)
     .single();
 
@@ -122,6 +146,30 @@ export async function gaVidare(formData: FormData) {
       bokning_klar: true,
       bokning_klar_at: new Date().toISOString(),
     }).eq('id', id);
+
+    // Auto-skapa körjournal-rad om bokningen har avstånd
+    if (user && b.avstand_km_enkel && Number(b.avstand_km_enkel) > 0) {
+      const kund: any = b.kund;
+      const typ: any = b.fotograferingstyp;
+      const platsRef: any = b.plats_ref;
+      const kundNamn = kund?.foretagsnamn || `${kund?.fornamn || ''} ${kund?.efternamn || ''}`.trim();
+      const typNamn = typ?.namn || 'Fotografering';
+      const syfte = `${typNamn}${kundNamn ? ' — ' + kundNamn : ''}`;
+      const platsNamn = platsRef?.namn || b.plats || null;
+      const platsAdress = platsRef?.adress || null;
+      const tor = Number(b.avstand_km_enkel) * 2;
+      const datum = b.datum || new Date().toISOString().slice(0, 10);
+
+      await supabase.from('korjournal').insert({
+        user_id: user.id,
+        bokning_id: id,
+        datum,
+        syfte,
+        plats_namn: platsNamn,
+        plats_adress: platsAdress,
+        antal_km: tor,
+      });
+    }
   } else {
     await supabase.from('bokningar').update({
       kundgalleri_skickat: true,
@@ -132,6 +180,7 @@ export async function gaVidare(formData: FormData) {
   if (kund_id) revalidatePath(`/admin/kunder/${kund_id}`);
   revalidatePath('/admin');
   revalidatePath('/admin/kunder');
+  revalidatePath('/admin/korjournal');
 }
 
 /**
@@ -244,13 +293,35 @@ export async function skapaBokning(formData: FormData) {
   const bokningsavgift_betald = formData.get('bokningsavgift_betald') === 'on';
   const intern_anteckning = String(formData.get('intern_anteckning') || '') || null;
 
+  // Plats kan vara vald från listan eller frihandstext
+  const plats_id_raw = String(formData.get('plats_id') || '');
+  const plats_id = plats_id_raw && plats_id_raw !== 'fri' ? plats_id_raw : null;
+
+  let plats_namn = plats;
+  let plats_adress = adress;
+  let avstand_km_enkel: number | null = null;
+  if (plats_id) {
+    const { data: p } = await supabase
+      .from('platser')
+      .select('namn, adress, avstand_km_enkel')
+      .eq('id', plats_id)
+      .maybeSingle();
+    if (p) {
+      plats_namn = p.namn;
+      plats_adress = p.adress || adress;
+      avstand_km_enkel = p.avstand_km_enkel != null ? Number(p.avstand_km_enkel) : null;
+    }
+  }
+
   await supabase.from('bokningar').insert({
     user_id: user.id,
     kund_id: kund_id,
     datum: datum,
     tid: tid,
-    plats: plats,
-    adress: adress,
+    plats: plats_namn,
+    adress: plats_adress,
+    plats_id,
+    avstand_km_enkel,
     fotograferingstyp_id: fotograferingstyp_id,
     status: status,
     bokningsavgift_kr: bokningsavgift_kr,
