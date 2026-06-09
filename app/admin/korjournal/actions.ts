@@ -78,10 +78,10 @@ export async function uppdateraKorjournalpost(formData: FormData) {
  * Skapar rader även när avstånd saknas så Anna kan fylla i km själv.
  * Syfte är alltid "Fotografering". Kunden hamnar i Kund-kolumnen.
  */
-export async function synkaKorjournalFranBokningar() {
+export async function synkaKorjournalFranBokningar(_formData?: FormData) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { skapade: 0 };
+  if (!user) return;
 
   const idag = new Date().toISOString().slice(0, 10);
 
@@ -152,7 +152,6 @@ export async function synkaKorjournalFranBokningar() {
   }
 
   revalidatePath('/admin/korjournal');
-  return { skapade };
 }
 
 /**
