@@ -13,6 +13,7 @@ export function PlatsValjare(props: {
   initialPlatsId?: string | null;
   initialPlats?: string;
   initialAdress?: string;
+  initialAvstandKmEnkel?: number | null;
 }) {
   const [platsId, setPlatsId] = useState<string>(props.initialPlatsId || (props.initialPlats ? 'fri' : ''));
   const visaFritext = platsId === 'fri';
@@ -47,29 +48,48 @@ export function PlatsValjare(props: {
       </div>
 
       {visaFritext && (
-        <div className="grid grid-cols-2 gap-5">
-          <div>
-            <label className="block text-[12px] uppercase tracking-wider text-ink-muted mb-1.5">
-              Platsens namn
-            </label>
-            <input
-              type="text"
-              name="plats"
-              defaultValue={props.initialPlats || ''}
-              className="w-full px-3 py-2.5 bg-white border border-line-soft rounded-sm text-sm focus:outline-none focus:border-ink"
-              placeholder="t.ex. Strandvägen 7"
-            />
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-5">
+            <div>
+              <label className="block text-[12px] uppercase tracking-wider text-ink-muted mb-1.5">
+                Platsens namn
+              </label>
+              <input
+                type="text"
+                name="plats"
+                defaultValue={props.initialPlats || ''}
+                className="w-full px-3 py-2.5 bg-white border border-line-soft rounded-sm text-sm focus:outline-none focus:border-ink"
+                placeholder="t.ex. Hemma hos kund, Strandvägen 7"
+              />
+            </div>
+            <div>
+              <label className="block text-[12px] uppercase tracking-wider text-ink-muted mb-1.5">
+                Adress
+              </label>
+              <input
+                type="text"
+                name="adress"
+                defaultValue={props.initialAdress || ''}
+                className="w-full px-3 py-2.5 bg-white border border-line-soft rounded-sm text-sm focus:outline-none focus:border-ink"
+                placeholder="Gata, ort"
+              />
+            </div>
           </div>
           <div>
             <label className="block text-[12px] uppercase tracking-wider text-ink-muted mb-1.5">
-              Adress
+              Avstånd enkel väg (km, från ditt hem)
             </label>
             <input
               type="text"
-              name="adress"
-              defaultValue={props.initialAdress || ''}
-              className="w-full px-3 py-2.5 bg-white border border-line-soft rounded-sm text-sm focus:outline-none focus:border-ink"
+              name="avstand_km_enkel_fri"
+              defaultValue={props.initialAvstandKmEnkel != null ? String(props.initialAvstandKmEnkel) : ''}
+              inputMode="decimal"
+              className="w-full px-3 py-2.5 bg-white border border-line-soft rounded-sm text-sm focus:outline-none focus:border-ink max-w-[200px]"
+              placeholder="t.ex. 12,5"
             />
+            <p className="text-[11px] text-ink-faint mt-1">
+              Lämna tomt om resan inte ska räknas in i körjournalen. Annars fylls det dubbla automatiskt som tur och retur när bokningen markeras klar.
+            </p>
           </div>
         </div>
       )}
