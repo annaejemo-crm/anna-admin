@@ -1,0 +1,24 @@
+-- Medföljande på körjournal + mätarställning per år.
+-- Kör hela blocket i Supabase SQL Editor.
+
+alter table korjournal
+  add column if not exists medfoljande text;
+
+create table if not exists matarstallning (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  ar int not null,
+  borjan_km numeric(10, 2),
+  slut_km numeric(10, 2),
+  uppdaterad_at timestamptz not null default now(),
+  primary key (user_id, ar)
+);
+
+alter table matarstallning enable row level security;
+
+drop policy if exists "Anna kan se sin mätarställning" on matarstallning;
+create policy "Anna kan se sin mätarställning" on matarstallning
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- Lägg också hemadress på installningar om den inte redan finns (den finns i 0008)
+alter table installningar
+  add column if not exists hemadress text;
