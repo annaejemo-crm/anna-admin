@@ -14,6 +14,12 @@ export default async function NyBokningPage(props: { searchParams?: Promise<{ ku
     .select('id, namn')
     .order('ordning');
 
+  const { data: platserRaw } = await supabase
+    .from('platser')
+    .select('id, namn, avstand_km_enkel')
+    .eq('aktiv', true)
+    .order('namn');
+
   const kunder = (kunderRaw || []).map(function(k: any) {
     return {
       id: k.id,
@@ -21,6 +27,9 @@ export default async function NyBokningPage(props: { searchParams?: Promise<{ ku
     };
   });
   const typer = (typerRaw || []) as { id: string; namn: string }[];
+  const platser = (platserRaw || []).map(function(p: any) {
+    return { id: p.id, namn: p.namn, avstand_km_enkel: p.avstand_km_enkel };
+  });
 
   return (
     <>
@@ -29,7 +38,7 @@ export default async function NyBokningPage(props: { searchParams?: Promise<{ ku
         <h1 className="font-serif text-[42px] font-light leading-tight">Ny bokning</h1>
       </div>
 
-      <NyBokningForm kunder={kunder} typer={typer} valdKundId={sp.kund || null} />
+      <NyBokningForm kunder={kunder} typer={typer} platser={platser} valdKundId={sp.kund || null} />
     </>
   );
 }
