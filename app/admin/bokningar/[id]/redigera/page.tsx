@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { updateBokning, deleteBokning } from '../../actions';
+import { PlatsValjare } from '@/components/PlatsValjare';
 
 const STATUS_LIST: { kod: string; label: string }[] = [
   { kod: 'forfragan', label: 'Förfrågan' },
@@ -39,6 +40,17 @@ export default async function RedigeraBokningPage(props: { params: Promise<{ id:
     .select('namn, pris_kr')
     .order('ordning');
 
+  const { data: platserRaw } = await supabase
+    .from('platser')
+    .select('id, namn, avstand_km_enkel')
+    .eq('aktiv', true)
+    .order('namn');
+  const platser = (platserRaw || []).map((p: any) => ({
+    id: p.id,
+    namn: p.namn,
+    avstand_km_enkel: p.avstand_km_enkel,
+  }));
+
   const kund = bokning.kund;
   const kundNamn = kund.foretagsnamn || `${kund.fornamn} ${kund.efternamn || ''}`.trim();
 
@@ -67,14 +79,12 @@ export default async function RedigeraBokningPage(props: { params: Promise<{ id:
               <input type="time" name="tid" defaultValue={bokning.tid || ''} className={inputStyle} />
             </Field>
           </Row>
-          <Row>
-            <Field label="Plats">
-              <input type="text" name="plats" defaultValue={bokning.plats || ''} className={inputStyle} placeholder="t.ex. Studio eller Stadsbiblioteket" />
-            </Field>
-            <Field label="Adress">
-              <input type="text" name="adress" defaultValue={bokning.adress || ''} className={inputStyle} />
-            </Field>
-          </Row>
+          <PlatsValjare
+            platser={platser}
+            initialPlatsId={bokning.plats_id}
+            initialPlats={bokning.plats || ''}
+            initialAdress={bokning.adress || ''}
+          />
         </Section>
 
         <Section title="Typ och status">
