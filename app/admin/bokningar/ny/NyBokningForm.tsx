@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { skapaBokning } from '../actions';
+import { PlatsValjare, PlatsOption } from '@/components/PlatsValjare';
 
 const STATUS_LIST: { kod: string; label: string }[] = [
   { kod: 'forfragan', label: 'Förfrågan' },
@@ -20,7 +21,7 @@ const HUR_HITTADE_FORSLAG = ['Instagram', 'Google', 'Rekommendation', 'Återkomm
 
 type KundOption = { id: string; label: string };
 
-export function NyBokningForm(props: { kunder: KundOption[]; typer: { id: string; namn: string }[]; valdKundId: string | null }) {
+export function NyBokningForm(props: { kunder: KundOption[]; typer: { id: string; namn: string }[]; platser: PlatsOption[]; valdKundId: string | null }) {
   const [kundLage, setKundLage] = useState<'existerande' | 'ny'>(props.valdKundId ? 'existerande' : 'ny');
   const [valdKund, setValdKund] = useState(props.valdKundId || '');
 
@@ -91,14 +92,7 @@ export function NyBokningForm(props: { kunder: KundOption[]; typer: { id: string
             <input type="time" name="tid" className={inputStyle} />
           </Field>
         </Row>
-        <Row>
-          <Field label="Plats">
-            <input type="text" name="plats" className={inputStyle} placeholder="t.ex. Studio eller Stadsbiblioteket" />
-          </Field>
-          <Field label="Adress">
-            <input type="text" name="adress" className={inputStyle} />
-          </Field>
-        </Row>
+        <PlatsValjare platser={props.platser} />
       </Section>
 
       <Section title="Typ och status">
