@@ -62,6 +62,15 @@ export async function updateBokning(formData: FormData) {
       plats_adress = p.adress || adress;
       avstand_km_enkel = p.avstand_km_enkel != null ? Number(p.avstand_km_enkel) : null;
     }
+  } else {
+    // Fri plats: läs km från fritext-fältet om Anna fyllt i det
+    const friRaw = String(formData.get('avstand_km_enkel_fri') || '').replace(',', '.').trim();
+    if (friRaw) {
+      const friNum = parseFloat(friRaw);
+      if (!Number.isNaN(friNum) && friNum > 0) {
+        avstand_km_enkel = friNum;
+      }
+    }
   }
 
   await supabase.from('bokningar').update({
@@ -310,6 +319,15 @@ export async function skapaBokning(formData: FormData) {
       plats_namn = p.namn;
       plats_adress = p.adress || adress;
       avstand_km_enkel = p.avstand_km_enkel != null ? Number(p.avstand_km_enkel) : null;
+    }
+  } else {
+    // Fri plats: läs km från fritext-fältet om Anna fyllt i det
+    const friRaw = String(formData.get('avstand_km_enkel_fri') || '').replace(',', '.').trim();
+    if (friRaw) {
+      const friNum = parseFloat(friRaw);
+      if (!Number.isNaN(friNum) && friNum > 0) {
+        avstand_km_enkel = friNum;
+      }
     }
   }
 
