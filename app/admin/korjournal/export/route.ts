@@ -2,7 +2,8 @@ import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 
 /**
- * Exporterar körjournalen som CSV. Excel öppnar filen direkt.
+ * Exporterar körjournalen som CSV med samma upplägg som Annas befintliga Excel.
+ * Excel öppnar filen direkt eftersom semikolon används som separator.
  */
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -14,9 +15,16 @@ export async function GET(request: Request) {
 
   const { data: inst } = await supabase
     .from('installningar')
-    .select('milersattning_kr')
+    .select('milersattning_kr, hemadress')
     .maybeSingle();
   const sats = inst?.milersattning_kr ? Number(inst.milersattning_kr) : 25;
+  const hemadress = inst?.hemadress || 'Glasyrvägen 33';
+
+  const { data: matar } = await supabase
+    .from('matarstallning')
+    .select('borjan_km, slut_km')
+    .eq('ar', parseInt(ar, 10))
+    .maybeSingle();
 
   const { data } = await supabase
     .from('korjournal')
@@ -27,10 +35,20 @@ export async function GET(request: Request) {
 
   const poster = (data || []) as any[];
 
-  // CSV med semikolon som separator (Excels svenska default).
   const rader: string[] = [];
+
+  // Header som matchar Annas Excel
+  rader.push(`KÖRJOURNAL ${ar} - ANNA EJEMO AB`);
+  if (matar?.borjan_km != null || matar?.slut_km != null) {
+    const borjan = matar?.borjan_km != null ? `${Number(matar.borjan_km).toLocaleString('sv-SE')} km` : '—';
+    const slut = matar?.slut_km != null ? `${Number(matar.slut_km).toLocaleString('sv-SE')} km` : '—';
+    rader.push(`Bilens mätarställning vid årets början ${borjan} och slut ${slut}`);
+  }
+  rader.push('');
+
+  // Kolumnrubriker
   rader.push(
-    ['Datum', 'Syfte', 'Plats', 'Adress', 'Km (T/R)', 'Mil', `Milersättning (${sats} kr/mil)`].join(';'),
+    ['Datum', 'Syfte', 'Adresser & sträckor', 'Km (T/R)', 'Medföljande', 'Mil', `Milersättning (${sats} kr/mil)`].join(';'),
   );
 
   let totalKm = 0;
@@ -39,25 +57,32 @@ export async function GET(request: Request) {
     totalKm += km;
     const mil = km / 10;
     const kr = mil * sats;
+
+    // Bygg "Hem - destination - Hem" som i Annas Excel
+    const dest = p.plats_adress || p.plats_namn || '';
+    const adresserStrang = dest
+      ? `${hemadress} - ${dest} - ${hemadress}`
+      : '';
+
     rader.push(
       [
         new Date(p.datum).toLocaleDateString('sv-SE'),
         csvSafe(p.syfte),
-        csvSafe(p.plats_namn || ''),
-        csvSafe(p.plats_adress || ''),
+        csvSafe(adresserStrang),
         km.toLocaleString('sv-SE'),
+        csvSafe(p.medfoljande || ''),
         mil.toLocaleString('sv-SE', { maximumFractionDigits: 2 }),
         kr.toLocaleString('sv-SE', { maximumFractionDigits: 2 }),
       ].join(';'),
     );
   }
 
-  // Summaringsrad
+  // Summeringsrad
   const totalMil = totalKm / 10;
   const totalKr = totalMil * sats;
   rader.push('');
   rader.push(
-    ['', 'TOTALT', '', '', totalKm.toLocaleString('sv-SE'), totalMil.toLocaleString('sv-SE', { maximumFractionDigits: 2 }), totalKr.toLocaleString('sv-SE', { maximumFractionDigits: 2 })].join(';'),
+    ['', 'ANTAL KM:', '', totalKm.toLocaleString('sv-SE'), '', totalMil.toLocaleString('sv-SE', { maximumFractionDigits: 2 }), totalKr.toLocaleString('sv-SE', { maximumFractionDigits: 2 })].join(';'),
   );
 
   // BOM för att Excel ska tolka UTF-8 korrekt
