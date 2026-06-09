@@ -48,7 +48,7 @@ export async function GET(request: Request) {
 
   // Kolumnrubriker
   rader.push(
-    ['Datum', 'Syfte', 'Adresser & sträckor', 'Km (T/R)', 'Medföljande', 'Mil', `Milersättning (${sats} kr/mil)`].join(';'),
+    ['Datum', 'Syfte', 'Adresser & sträckor', 'Km (T/R)', 'Kund', 'Mil', `Milersättning (${sats} kr/mil)`].join(';'),
   );
 
   let totalKm = 0;
