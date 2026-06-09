@@ -91,9 +91,52 @@ export async function updateBokning(formData: FormData) {
     visma_fakturanr: visma_fakturanr,
   }).eq('id', id);
 
+  // Om status sätts till klar via formuläret: sätt bokning_klar-flaggan
+  // och skapa körjournal-rad ifall avstånd finns och rad saknas.
+  if (status === 'klar') {
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: bef } = await supabase
+      .from('bokningar')
+      .select('bokning_klar, kund:kunder(fornamn, efternamn, foretagsnamn)')
+      .eq('id', id)
+      .single();
+
+    if (bef && !bef.bokning_klar) {
+      await supabase.from('bokningar').update({
+        bokning_klar: true,
+        bokning_klar_at: new Date().toISOString(),
+      }).eq('id', id);
+    }
+
+    if (user && avstand_km_enkel && avstand_km_enkel > 0) {
+      const { data: existing } = await supabase
+        .from('korjournal')
+        .select('id')
+        .eq('bokning_id', id)
+        .maybeSingle();
+
+      if (!existing) {
+        const kund: any = bef?.kund;
+        const kundNamn = kund?.foretagsnamn || `${kund?.fornamn || ''} ${kund?.efternamn || ''}`.trim();
+
+        await supabase.from('korjournal').insert({
+          user_id: user.id,
+          bokning_id: id,
+          datum: datum || new Date().toISOString().slice(0, 10),
+          syfte: 'Fotografering',
+          plats_namn,
+          plats_adress,
+          antal_km: avstand_km_enkel * 2,
+          medfoljande: kundNamn || null,
+        });
+      }
+    }
+  }
+
   revalidatePath(`/admin/kunder/${kund_id}`);
   revalidatePath('/admin/kunder');
   revalidatePath('/admin/ekonomi');
+  revalidatePath('/admin/korjournal');
   redirect(`/admin/kunder/${kund_id}`);
 }
 
@@ -159,11 +202,8 @@ export async function gaVidare(formData: FormData) {
     // Auto-skapa körjournal-rad om bokningen har avstånd
     if (user && b.avstand_km_enkel && Number(b.avstand_km_enkel) > 0) {
       const kund: any = b.kund;
-      const typ: any = b.fotograferingstyp;
       const platsRef: any = b.plats_ref;
       const kundNamn = kund?.foretagsnamn || `${kund?.fornamn || ''} ${kund?.efternamn || ''}`.trim();
-      const typNamn = typ?.namn || 'Fotografering';
-      const syfte = `${typNamn}${kundNamn ? ' — ' + kundNamn : ''}`;
       const platsNamn = platsRef?.namn || b.plats || null;
       const platsAdress = platsRef?.adress || null;
       const tor = Number(b.avstand_km_enkel) * 2;
@@ -173,10 +213,11 @@ export async function gaVidare(formData: FormData) {
         user_id: user.id,
         bokning_id: id,
         datum,
-        syfte,
+        syfte: 'Fotografering',
         plats_namn: platsNamn,
         plats_adress: platsAdress,
         antal_km: tor,
+        medfoljande: kundNamn || null,
       });
     }
   } else {
