@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { raderaKorjournalpost, skapaKorjournalpost, sparaMatarstallning, synkaKorjournalFranBokningar, uppdateraKorjournalpost } from './actions';
+import { flyttaKorjournalpost, raderaKorjournalpost, skapaKorjournalpost, sparaMatarstallning, synkaKorjournalFranBokningar, uppdateraKorjournalpost } from './actions';
 
 const MILERSATTNING_KR_PER_MIL = 25;
 const MONTH_NAMES = ['januari', 'februari', 'mars', 'april', 'maj', 'juni', 'juli', 'augusti', 'september', 'oktober', 'november', 'december'];
@@ -30,7 +30,9 @@ export default async function KorjournalPage(props: { searchParams?: Promise<{ a
     .select('*')
     .gte('datum', start)
     .lte('datum', slut)
-    .order('datum', { ascending: true });
+    .order('datum', { ascending: true })
+    .order('pos', { ascending: true })
+    .order('id', { ascending: true });
 
   const poster = (data || []) as any[];
 
@@ -195,7 +197,7 @@ export default async function KorjournalPage(props: { searchParams?: Promise<{ a
                   </span>
                 </header>
                 <div className="text-sm">
-                  <div className="grid grid-cols-[140px_1fr_1.4fr_1fr_110px_70px] text-left text-[11px] uppercase tracking-wider text-ink-muted">
+                  <div className="grid grid-cols-[140px_1fr_1.4fr_1fr_110px_100px] text-left text-[11px] uppercase tracking-wider text-ink-muted">
                     <div className="px-3 py-2.5 font-medium">Datum</div>
                     <div className="px-3 py-2.5 font-medium">Syfte</div>
                     <div className="px-3 py-2.5 font-medium">Plats / Adress</div>
@@ -207,7 +209,7 @@ export default async function KorjournalPage(props: { searchParams?: Promise<{ a
                     <form
                       key={p.id}
                       action={uppdateraKorjournalpost}
-                      className="grid grid-cols-[140px_1fr_1.4fr_1fr_110px_70px] gap-0 items-stretch border-t border-line-soft"
+                      className="grid grid-cols-[140px_1fr_1.4fr_1fr_110px_100px] gap-0 items-stretch border-t border-line-soft"
                     >
                       <input type="hidden" name="id" value={p.id} />
                       <input type="hidden" name="plats_adress" defaultValue={p.plats_adress || ''} />
@@ -245,7 +247,9 @@ export default async function KorjournalPage(props: { searchParams?: Promise<{ a
                         placeholder="0"
                         className="px-3 py-3 text-right font-mono text-[12.5px] bg-transparent hover:bg-bg-subtle focus:bg-white focus:outline-1 focus:outline focus:outline-ink"
                       />
-                      <div className="flex items-center justify-end gap-2 pr-3">
+                      <div className="flex items-center justify-end gap-1.5 pr-2">
+                        <button type="submit" name="riktning" value="upp" formAction={flyttaKorjournalpost} className="text-[12px] text-ink-faint hover:text-ink leading-none" title="Flytta upp">↑</button>
+                        <button type="submit" name="riktning" value="ner" formAction={flyttaKorjournalpost} className="text-[12px] text-ink-faint hover:text-ink leading-none" title="Flytta ner">↓</button>
                         <button type="submit" className="text-[11px] text-ink-faint hover:text-ink" title="Spara ändringar">Spara</button>
                         <button type="submit" formAction={raderaKorjournalpost} className="text-[11px] text-ink-faint hover:text-danger" title="Radera raden">×</button>
                       </div>
