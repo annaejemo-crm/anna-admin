@@ -141,7 +141,7 @@ export default async function KorjournalPage(props: { searchParams?: Promise<{ a
       {/* Lägg till ny rad. Öppet direkt så det är som en excel-rad. */}
       <section className="bg-white border border-line-soft rounded-sm p-5 mb-8">
         <div className="eyebrow mb-3">Lägg till resa</div>
-        <form action={skapaKorjournalpost} className="grid grid-cols-[110px_1fr_1.4fr_1fr_90px_auto] gap-2 items-end">
+        <form action={skapaKorjournalpost} className="grid grid-cols-[140px_1fr_1.4fr_1fr_90px_auto] gap-2 items-end">
           <div>
             <label className="block text-[10px] uppercase tracking-wider text-ink-muted mb-1">Datum</label>
             <input type="date" name="datum" required defaultValue={idagDatum} className="w-full px-2 py-2 border border-line-soft rounded-sm text-sm" />
@@ -194,68 +194,64 @@ export default async function KorjournalPage(props: { searchParams?: Promise<{ a
                     <strong className="text-ink font-medium">{mKr.toLocaleString('sv-SE', { maximumFractionDigits: 0 })} kr</strong>
                   </span>
                 </header>
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-left text-[11px] uppercase tracking-wider text-ink-muted">
-                      <th className="px-3 py-2.5 font-medium w-[110px]">Datum</th>
-                      <th className="px-3 py-2.5 font-medium">Syfte</th>
-                      <th className="px-3 py-2.5 font-medium">Plats / Adress</th>
-                      <th className="px-3 py-2.5 font-medium">Kund</th>
-                      <th className="px-3 py-2.5 font-medium text-right w-[110px]">Km (T/R)</th>
-                      <th className="px-3 py-2.5 font-medium w-[70px]" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {matchande.map((p: any) => (
-                      <tr key={p.id} className="border-t border-line-soft">
-                        <td colSpan={6} className="p-0">
-                          <form action={uppdateraKorjournalpost} className="grid grid-cols-[110px_1fr_1.4fr_1fr_110px_70px] gap-0 items-stretch">
-                            <input type="hidden" name="id" value={p.id} />
-                            <input type="hidden" name="plats_adress" defaultValue={p.plats_adress || ''} />
-                            <input
-                              type="date"
-                              name="datum"
-                              defaultValue={p.datum ? new Date(p.datum).toISOString().slice(0, 10) : ''}
-                              className="px-3 py-3 font-mono text-[12px] bg-transparent hover:bg-bg-subtle focus:bg-white focus:outline-1 focus:outline focus:outline-ink"
-                            />
-                            <input
-                              type="text"
-                              name="syfte"
-                              defaultValue={p.syfte || ''}
-                              className="px-3 py-3 text-sm bg-transparent hover:bg-bg-subtle focus:bg-white focus:outline-1 focus:outline focus:outline-ink"
-                            />
-                            <input
-                              type="text"
-                              name="plats_namn"
-                              defaultValue={p.plats_namn || ''}
-                              placeholder="Plats"
-                              className="px-3 py-3 text-sm text-ink-muted bg-transparent hover:bg-bg-subtle focus:bg-white focus:outline-1 focus:outline focus:outline-ink"
-                            />
-                            <input
-                              type="text"
-                              name="medfoljande"
-                              defaultValue={p.medfoljande || ''}
-                              placeholder="Kund"
-                              className="px-3 py-3 text-[12.5px] text-ink-muted bg-transparent hover:bg-bg-subtle focus:bg-white focus:outline-1 focus:outline focus:outline-ink"
-                            />
-                            <input
-                              type="text"
-                              name="antal_km"
-                              inputMode="decimal"
-                              defaultValue={p.antal_km != null ? String(Number(p.antal_km)).replace('.', ',') : ''}
-                              placeholder="0"
-                              className="px-3 py-3 text-right font-mono text-[12.5px] bg-transparent hover:bg-bg-subtle focus:bg-white focus:outline-1 focus:outline focus:outline-ink"
-                            />
-                            <div className="flex items-center justify-end gap-2 pr-3">
-                              <button type="submit" className="text-[11px] text-ink-faint hover:text-ink" title="Spara ändringar">Spara</button>
-                              <button type="submit" formAction={raderaKorjournalpost} className="text-[11px] text-ink-faint hover:text-danger" title="Radera raden">×</button>
-                            </div>
-                          </form>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <div className="text-sm">
+                  <div className="grid grid-cols-[140px_1fr_1.4fr_1fr_110px_70px] text-left text-[11px] uppercase tracking-wider text-ink-muted">
+                    <div className="px-3 py-2.5 font-medium">Datum</div>
+                    <div className="px-3 py-2.5 font-medium">Syfte</div>
+                    <div className="px-3 py-2.5 font-medium">Plats / Adress</div>
+                    <div className="px-3 py-2.5 font-medium">Kund</div>
+                    <div className="px-3 py-2.5 font-medium text-right">Km (T/R)</div>
+                    <div className="px-3 py-2.5 font-medium" />
+                  </div>
+                  {matchande.map((p: any) => (
+                    <form
+                      key={p.id}
+                      action={uppdateraKorjournalpost}
+                      className="grid grid-cols-[140px_1fr_1.4fr_1fr_110px_70px] gap-0 items-stretch border-t border-line-soft"
+                    >
+                      <input type="hidden" name="id" value={p.id} />
+                      <input type="hidden" name="plats_adress" defaultValue={p.plats_adress || ''} />
+                      <input
+                        type="date"
+                        name="datum"
+                        defaultValue={p.datum ? new Date(p.datum).toISOString().slice(0, 10) : ''}
+                        className="px-3 py-3 font-mono text-[12px] bg-transparent hover:bg-bg-subtle focus:bg-white focus:outline-1 focus:outline focus:outline-ink"
+                      />
+                      <input
+                        type="text"
+                        name="syfte"
+                        defaultValue={p.syfte || ''}
+                        className="px-3 py-3 text-sm bg-transparent hover:bg-bg-subtle focus:bg-white focus:outline-1 focus:outline focus:outline-ink"
+                      />
+                      <input
+                        type="text"
+                        name="plats_namn"
+                        defaultValue={p.plats_namn || ''}
+                        placeholder="Plats"
+                        className="px-3 py-3 text-sm text-ink-muted bg-transparent hover:bg-bg-subtle focus:bg-white focus:outline-1 focus:outline focus:outline-ink"
+                      />
+                      <input
+                        type="text"
+                        name="medfoljande"
+                        defaultValue={p.medfoljande || ''}
+                        placeholder="Kund"
+                        className="px-3 py-3 text-[12.5px] text-ink-muted bg-transparent hover:bg-bg-subtle focus:bg-white focus:outline-1 focus:outline focus:outline-ink"
+                      />
+                      <input
+                        type="text"
+                        name="antal_km"
+                        inputMode="decimal"
+                        defaultValue={p.antal_km != null ? String(Number(p.antal_km)).replace('.', ',') : ''}
+                        placeholder="0"
+                        className="px-3 py-3 text-right font-mono text-[12.5px] bg-transparent hover:bg-bg-subtle focus:bg-white focus:outline-1 focus:outline focus:outline-ink"
+                      />
+                      <div className="flex items-center justify-end gap-2 pr-3">
+                        <button type="submit" className="text-[11px] text-ink-faint hover:text-ink" title="Spara ändringar">Spara</button>
+                        <button type="submit" formAction={raderaKorjournalpost} className="text-[11px] text-ink-faint hover:text-danger" title="Radera raden">×</button>
+                      </div>
+                    </form>
+                  ))}
+                </div>
               </section>
             );
           })}
