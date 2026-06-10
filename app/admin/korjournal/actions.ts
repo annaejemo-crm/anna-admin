@@ -12,6 +12,51 @@ export async function raderaKorjournalpost(formData: FormData) {
 }
 
 /**
+ * Flytta en körjournal-rad uppåt eller nedåt inom samma datum.
+ * Byter pos-värde med raden ovanför/under.
+ */
+export async function flyttaKorjournalpost(formData: FormData) {
+  const supabase = await createClient();
+  const id = String(formData.get('id') || '');
+  const riktning = String(formData.get('riktning') || '');
+  if (!id || (riktning !== 'upp' && riktning !== 'ner')) return;
+
+  const { data: rad } = await supabase
+    .from('korjournal')
+    .select('id, datum, pos')
+    .eq('id', id)
+    .maybeSingle();
+  if (!rad) return;
+
+  // Hämta granne med samma datum
+  let queryGranne = supabase
+    .from('korjournal')
+    .select('id, pos')
+    .eq('datum', rad.datum);
+
+  if (riktning === 'upp') {
+    queryGranne = queryGranne.lt('pos', rad.pos).order('pos', { ascending: false }).limit(1);
+  } else {
+    queryGranne = queryGranne.gt('pos', rad.pos).order('pos', { ascending: true }).limit(1);
+  }
+
+  const { data: grannar } = await queryGranne;
+  const granne = grannar && grannar[0];
+
+  if (granne) {
+    // Byt pos-värden
+    await supabase.from('korjournal').update({ pos: granne.pos }).eq('id', rad.id);
+    await supabase.from('korjournal').update({ pos: rad.pos }).eq('id', granne.id);
+  } else {
+    // Ingen granne med pos-skillnad. Sätt nytt pos relativt rad.
+    const nyPos = riktning === 'upp' ? (rad.pos as number) - 1 : (rad.pos as number) + 1;
+    await supabase.from('korjournal').update({ pos: nyPos }).eq('id', rad.id);
+  }
+
+  revalidatePath('/admin/korjournal');
+}
+
+/**
  * Lägg till en manuell körjournal-post.
  * För resor som inte hör till en bokning, eller poster du vill rätta i efterhand.
  */
