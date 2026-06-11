@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { bytBilForKorjournalpost, flyttaKorjournalpost, raderaKorjournalpost, skapaKorjournalpost, sparaMatarstallning, synkaKorjournalFranBokningar, uppdateraKorjournalpost } from './actions';
+import { bytBilForKorjournalpost, flyttaKorjournalpostNer, flyttaKorjournalpostUpp, raderaKorjournalpost, skapaKorjournalpost, sparaMatarstallning, synkaKorjournalFranBokningar, uppdateraKorjournalpost } from './actions';
 
 const BILAR = ['TMX76G', 'UDD408'] as const;
 type BilKod = typeof BILAR[number];
@@ -271,8 +271,8 @@ export default async function KorjournalPage(props: { searchParams?: Promise<{ a
                         className="px-3 py-3 text-right font-mono text-[12.5px] bg-transparent hover:bg-bg-subtle focus:bg-white focus:outline-1 focus:outline focus:outline-ink"
                       />
                       <div className="flex items-center justify-end gap-0.5 pr-2">
-                        <button type="submit" name="riktning" value="upp" formAction={flyttaKorjournalpost} className="w-7 h-7 flex items-center justify-center text-[16px] text-ink-muted hover:text-ink hover:bg-bg-subtle rounded-sm leading-none" title="Flytta upp">↑</button>
-                        <button type="submit" name="riktning" value="ner" formAction={flyttaKorjournalpost} className="w-7 h-7 flex items-center justify-center text-[16px] text-ink-muted hover:text-ink hover:bg-bg-subtle rounded-sm leading-none" title="Flytta ner">↓</button>
+                        <button type="submit" formAction={flyttaKorjournalpostUpp} className="w-7 h-7 flex items-center justify-center text-[16px] text-ink-muted hover:text-ink hover:bg-bg-subtle rounded-sm leading-none" title="Flytta upp">↑</button>
+                        <button type="submit" formAction={flyttaKorjournalpostNer} className="w-7 h-7 flex items-center justify-center text-[16px] text-ink-muted hover:text-ink hover:bg-bg-subtle rounded-sm leading-none" title="Flytta ner">↓</button>
                         <span className="w-px h-5 bg-line mx-1" />
                         <button type="submit" formAction={bytBilForKorjournalpost} className="px-2 h-7 text-[10px] font-mono text-ink-faint hover:text-ink hover:bg-bg-subtle rounded-sm" title={`Flytta till ${valdBil === 'TMX76G' ? 'UDD408' : 'TMX76G'}`}>→{valdBil === 'TMX76G' ? 'UDD' : 'TMX'}</button>
                         <button type="submit" className="px-2 h-7 text-[11px] text-ink-faint hover:text-ink hover:bg-bg-subtle rounded-sm" title="Spara ändringar">Spara</button>
