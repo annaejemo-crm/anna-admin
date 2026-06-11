@@ -71,6 +71,7 @@ export async function skapaKorjournalpost(formData: FormData) {
   const syfte = String(formData.get('syfte') || '').trim();
   if (!syfte) return;
 
+  const fran_adress = String(formData.get('fran_adress') || '').trim() || null;
   const plats_namn = String(formData.get('plats_namn') || '').trim() || null;
   const plats_adress = String(formData.get('plats_adress') || '').trim() || null;
   const medfoljande = String(formData.get('medfoljande') || '').trim() || null;
@@ -85,6 +86,7 @@ export async function skapaKorjournalpost(formData: FormData) {
     user_id: user.id,
     datum,
     syfte,
+    fran_adress,
     plats_namn,
     plats_adress,
     antal_km,
@@ -124,6 +126,7 @@ export async function uppdateraKorjournalpost(formData: FormData) {
 
   const datum = String(formData.get('datum') || '').trim();
   const syfte = String(formData.get('syfte') || '').trim();
+  const fran_adress = String(formData.get('fran_adress') || '').trim() || null;
   const plats_namn = String(formData.get('plats_namn') || '').trim() || null;
   const plats_adress = String(formData.get('plats_adress') || '').trim() || null;
   const medfoljande = String(formData.get('medfoljande') || '').trim() || null;
@@ -131,7 +134,7 @@ export async function uppdateraKorjournalpost(formData: FormData) {
   const antal_km_parsed = kmRaw ? parseFloat(kmRaw) : NaN;
   const antal_km = Number.isNaN(antal_km_parsed) ? null : antal_km_parsed;
 
-  const update: any = { plats_namn, plats_adress, medfoljande, antal_km };
+  const update: any = { fran_adress, plats_namn, plats_adress, medfoljande, antal_km };
   if (datum) update.datum = datum;
   if (syfte) update.syfte = syfte;
 
