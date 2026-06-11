@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { updateBokning, deleteBokning } from '../../actions';
 import { PlatsValjare } from '@/components/PlatsValjare';
+import { PrisFalt } from '@/components/PrisFalt';
 
 const STATUS_LIST: { kod: string; label: string }[] = [
   { kod: 'forfragan', label: 'Förfrågan' },
@@ -24,7 +25,7 @@ export default async function RedigeraBokningPage(props: { params: Promise<{ id:
 
   const { data: bokning } = await supabase
     .from('bokningar')
-    .select('*, kund:kunder(id, fornamn, efternamn, foretagsnamn)')
+    .select('*, kund:kunder(id, fornamn, efternamn, foretagsnamn, ar_foretagskund)')
     .eq('id', id)
     .single();
 
@@ -110,8 +111,8 @@ export default async function RedigeraBokningPage(props: { params: Promise<{ id:
 
         <Section title="Bokningsavgift">
           <Row>
-            <Field label="Bokningsavgift (kr)">
-              <input type="number" name="bokningsavgift_kr" defaultValue={bokning.bokningsavgift_kr || ''} className={inputStyle} placeholder="2000" />
+            <Field label={kund.ar_foretagskund ? 'Bokningsavgift (kr ex moms)' : 'Bokningsavgift (kr)'}>
+              <PrisFalt name="bokningsavgift_kr" defaultValue={bokning.bokningsavgift_kr} arForetagskund={!!kund.ar_foretagskund} placeholder="2000" />
             </Field>
             <Field label="Betald">
               <label className="flex items-center gap-2 h-[42px]">
@@ -132,8 +133,8 @@ export default async function RedigeraBokningPage(props: { params: Promise<{ id:
                 })}
               </select>
             </Field>
-            <Field label="Pris (kr)">
-              <input type="number" name="bildpaket_kr" defaultValue={bokning.bildpaket_kr || ''} className={inputStyle} placeholder="t.ex. 5000" />
+            <Field label={kund.ar_foretagskund ? 'Pris (kr ex moms)' : 'Pris (kr)'}>
+              <PrisFalt name="bildpaket_kr" defaultValue={bokning.bildpaket_kr} arForetagskund={!!kund.ar_foretagskund} placeholder="t.ex. 5000" />
             </Field>
           </Row>
           <Row>
