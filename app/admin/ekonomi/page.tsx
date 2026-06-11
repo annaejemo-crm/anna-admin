@@ -13,7 +13,7 @@ type BokningRow = {
 };
 
 type TypRow = { id: string; namn: string };
-type KundRow = { id: string; foretagsnamn: string | null };
+type KundRow = { id: string; foretagsnamn: string | null; ar_foretagskund: boolean | null };
 
 type ManadStat = { manad: number; total: number; paid: number; count: number };
 type ArStat = {
@@ -53,7 +53,7 @@ export default async function EkonomiPage(props: { searchParams?: Promise<{ ar?:
     .select('id, namn');
   const { data: kunderRaw } = await supabase
     .from('kunder')
-    .select('id, foretagsnamn');
+    .select('id, foretagsnamn, ar_foretagskund');
 
   const bokningar: BokningRow[] = (bokningarRaw || []) as BokningRow[];
   const typer: TypRow[] = (typerRaw || []) as TypRow[];
@@ -66,7 +66,7 @@ export default async function EkonomiPage(props: { searchParams?: Promise<{ ar?:
 
   const foretagSet: Record<string, boolean> = {};
   for (let i = 0; i < kunder.length; i++) {
-    if (kunder[i].foretagsnamn) foretagSet[kunder[i].id] = true;
+    if (kunder[i].ar_foretagskund || kunder[i].foretagsnamn) foretagSet[kunder[i].id] = true;
   }
 
   function statsFor(ar: number): ArStat {
@@ -184,6 +184,14 @@ export default async function EkonomiPage(props: { searchParams?: Promise<{ ar?:
           <div className="text-[11px] text-ink-muted">Antal bokningar per kategori</div>
         </div>
         <MonthCategoryChart manadTyp={manadTyp} typer={aktivaTyper} />
+      </div>
+
+      <div className="mb-12">
+        <div className="flex justify-between items-end mb-4">
+          <div className="eyebrow">Omsättning per månad {valtAr}</div>
+          <div className="text-[11px] text-ink-muted">Bokad omsättning och inkommit i kronor</div>
+        </div>
+        <MonthRevenueChart manader={valtStat.manader} />
       </div>
 
       <div className="mb-12">
@@ -358,6 +366,63 @@ function CompareChart(props: { stat2024: ArStat; stat2025: ArStat; stat2026: ArS
                 <div className="w-1/3 bg-ink-faint rounded-t-sm" style={{ height: `${h24}%`, minHeight: v24 > 0 ? '2px' : '0' }} title={`2024: ${v24.toLocaleString('sv-SE')} kr`} />
                 <div className="w-1/3 bg-sage rounded-t-sm" style={{ height: `${h25}%`, minHeight: v25 > 0 ? '2px' : '0' }} title={`2025: ${v25.toLocaleString('sv-SE')} kr`} />
                 <div className="w-1/3 bg-accent rounded-t-sm" style={{ height: `${h26}%`, minHeight: v26 > 0 ? '2px' : '0' }} title={`2026: ${v26.toLocaleString('sv-SE')} kr`} />
+              </div>
+              <div className="text-[10px] text-ink-faint mt-1.5">{namn}</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function MonthRevenueChart(props: { manader: ManadStat[] }) {
+  const manader = props.manader;
+  let max = 0;
+  for (let m = 0; m < 12; m++) {
+    if (manader[m].total > max) max = manader[m].total;
+  }
+  const totalAr = manader.reduce(function(s, m) { return s + m.total; }, 0);
+  const paidAr = manader.reduce(function(s, m) { return s + m.paid; }, 0);
+
+  function formatKr(v: number): string {
+    if (v >= 1000) return `${Math.round(v / 100) / 10} tkr`;
+    return `${v.toLocaleString('sv-SE')} kr`;
+  }
+
+  return (
+    <div className="bg-white border border-line-soft rounded-sm p-6">
+      <div className="flex justify-between items-end mb-5">
+        <div className="flex gap-5 text-xs">
+          <Legend color="bg-accent/70" label="Bokad omsättning" />
+          <Legend color="bg-sage" label="Inkommit" />
+        </div>
+        <div className="text-[12px] text-ink-muted">
+          År totalt: <strong className="text-ink font-medium">{totalAr.toLocaleString('sv-SE')} kr</strong>
+          <span className="mx-2 text-ink-faint">·</span>
+          inkommit: <strong className="text-ink font-medium">{paidAr.toLocaleString('sv-SE')} kr</strong>
+        </div>
+      </div>
+      <div className="flex items-end gap-2 h-80">
+        {MANADER.map(function(namn, m) {
+          const v = manader[m].total;
+          const p = manader[m].paid;
+          const h = max > 0 ? (v / max) * 100 : 0;
+          const ph = max > 0 ? (p / max) * 100 : 0;
+          return (
+            <div key={m} className="flex-1 flex flex-col items-center justify-end h-full">
+              <div className="text-[10px] text-ink-muted mb-1 tabular-nums h-3">{v > 0 ? formatKr(v) : ''}</div>
+              <div className="w-full flex items-end gap-0.5 justify-center" style={{ height: 'calc(100% - 24px)' }}>
+                <div
+                  className="w-1/2 bg-accent/70 rounded-t-sm"
+                  style={{ height: `${h}%`, minHeight: v > 0 ? '2px' : '0' }}
+                  title={`${namn}: ${v.toLocaleString('sv-SE')} kr bokat`}
+                />
+                <div
+                  className="w-1/2 bg-sage rounded-t-sm"
+                  style={{ height: `${ph}%`, minHeight: p > 0 ? '2px' : '0' }}
+                  title={`${namn}: ${p.toLocaleString('sv-SE')} kr inkommit`}
+                />
               </div>
               <div className="text-[10px] text-ink-faint mt-1.5">{namn}</div>
             </div>
