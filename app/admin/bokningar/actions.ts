@@ -30,12 +30,12 @@ export async function updateBokning(formData: FormData) {
   const fotograferingstyp_id = String(formData.get('fotograferingstyp_id') || '') || null;
   const status = String(formData.get('status') || 'bokad');
 
-  const bokningsavgiftRaw = String(formData.get('bokningsavgift_kr') || '');
-  const bildpaketKrRaw = String(formData.get('bildpaket_kr') || '');
+  const bokningsavgiftRaw = String(formData.get('bokningsavgift_kr') || '').replace(/\s/g, '').replace(',', '.');
+  const bildpaketKrRaw = String(formData.get('bildpaket_kr') || '').replace(/\s/g, '').replace(',', '.');
   const bildpaketNamn = String(formData.get('bildpaket_namn') || '') || null;
 
-  const bokningsavgift_kr = bokningsavgiftRaw ? parseInt(bokningsavgiftRaw, 10) : null;
-  const bildpaket_kr = bildpaketKrRaw ? parseInt(bildpaketKrRaw, 10) : null;
+  const bokningsavgift_kr = bokningsavgiftRaw ? Math.round(parseFloat(bokningsavgiftRaw)) : null;
+  const bildpaket_kr = bildpaketKrRaw ? Math.round(parseFloat(bildpaketKrRaw)) : null;
 
   const bokningsavgift_betald = formData.get('bokningsavgift_betald') === 'on';
   const bildpaket_betald = formData.get('bildpaket_betald') === 'on';
@@ -314,6 +314,7 @@ export async function skapaBokning(formData: FormData) {
     const fornamn = String(formData.get('fornamn') || '');
     const efternamn = String(formData.get('efternamn') || '') || null;
     const foretagsnamn = String(formData.get('foretagsnamn') || '') || null;
+    const ar_foretagskund = formData.get('ar_foretagskund') === 'on';
     const email = String(formData.get('email') || '') || null;
     const telefon = String(formData.get('telefon') || '') || null;
     const hur_hittade = String(formData.get('hur_hittade') || '') || null;
@@ -323,6 +324,7 @@ export async function skapaBokning(formData: FormData) {
       fornamn: fornamn,
       efternamn: efternamn,
       foretagsnamn: foretagsnamn,
+      ar_foretagskund: ar_foretagskund,
       email: email,
       telefon: telefon,
       hur_hittade: hur_hittade,
@@ -340,8 +342,8 @@ export async function skapaBokning(formData: FormData) {
   const fotograferingstyp_id = String(formData.get('fotograferingstyp_id') || '') || null;
   const status = String(formData.get('status') || 'bokad');
 
-  const bokningsavgiftRaw = String(formData.get('bokningsavgift_kr') || '');
-  const bokningsavgift_kr = bokningsavgiftRaw ? parseInt(bokningsavgiftRaw, 10) : null;
+  const bokningsavgiftRaw = String(formData.get('bokningsavgift_kr') || '').replace(/\s/g, '').replace(',', '.');
+  const bokningsavgift_kr = bokningsavgiftRaw ? Math.round(parseFloat(bokningsavgiftRaw)) : null;
   const bokningsavgift_betald = formData.get('bokningsavgift_betald') === 'on';
   const intern_anteckning = String(formData.get('intern_anteckning') || '') || null;
 
@@ -403,6 +405,7 @@ export async function updateKund(formData: FormData) {
   const fornamn = String(formData.get('fornamn') || '');
   const efternamn = String(formData.get('efternamn') || '') || null;
   const foretagsnamn = String(formData.get('foretagsnamn') || '') || null;
+  const ar_foretagskund = formData.get('ar_foretagskund') === 'on';
   const email = String(formData.get('email') || '') || null;
   const telefon = String(formData.get('telefon') || '') || null;
   const hur_hittade = String(formData.get('hur_hittade') || '') || null;
@@ -412,6 +415,7 @@ export async function updateKund(formData: FormData) {
     fornamn: fornamn,
     efternamn: efternamn,
     foretagsnamn: foretagsnamn,
+    ar_foretagskund: ar_foretagskund,
     email: email,
     telefon: telefon,
     hur_hittade: hur_hittade,
