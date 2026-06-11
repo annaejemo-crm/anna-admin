@@ -79,6 +79,8 @@ export async function skapaKorjournalpost(formData: FormData) {
   const antal_km_parsed = kmRaw ? parseFloat(kmRaw) : NaN;
   const antal_km = Number.isNaN(antal_km_parsed) ? null : antal_km_parsed;
 
+  const bil = String(formData.get('bil') || 'TMX76G').trim() || 'TMX76G';
+
   await supabase.from('korjournal').insert({
     user_id: user.id,
     datum,
@@ -87,8 +89,27 @@ export async function skapaKorjournalpost(formData: FormData) {
     plats_adress,
     antal_km,
     medfoljande,
+    bil,
   });
 
+  revalidatePath('/admin/korjournal');
+}
+
+/**
+ * Byter bil för en körjournal-rad (mellan TMX76G och UDD408).
+ */
+export async function bytBilForKorjournalpost(formData: FormData) {
+  const supabase = await createClient();
+  const id = String(formData.get('id') || '');
+  if (!id) return;
+  const { data: rad } = await supabase
+    .from('korjournal')
+    .select('bil')
+    .eq('id', id)
+    .maybeSingle();
+  if (!rad) return;
+  const nyBil = rad.bil === 'UDD408' ? 'TMX76G' : 'UDD408';
+  await supabase.from('korjournal').update({ bil: nyBil }).eq('id', id);
   revalidatePath('/admin/korjournal');
 }
 
@@ -192,6 +213,7 @@ export async function synkaKorjournalFranBokningar(_formData?: FormData) {
       plats_adress: platsAdress,
       antal_km: km,
       medfoljande: kundNamn || null,
+      bil: 'TMX76G',
     });
     if (!error) skapade++;
   }
@@ -210,6 +232,7 @@ export async function sparaMatarstallning(formData: FormData) {
   const ar = parseInt(String(formData.get('ar') || ''), 10);
   if (!ar) return;
 
+  const bil = String(formData.get('bil') || 'TMX76G').trim() || 'TMX76G';
   const borjanRaw = String(formData.get('borjan_km') || '').replace(',', '.').trim();
   const slutRaw = String(formData.get('slut_km') || '').replace(',', '.').trim();
 
@@ -219,10 +242,11 @@ export async function sparaMatarstallning(formData: FormData) {
   await supabase.from('matarstallning').upsert({
     user_id: user.id,
     ar,
+    bil,
     borjan_km: Number.isNaN(borjan_km as number) ? null : borjan_km,
     slut_km: Number.isNaN(slut_km as number) ? null : slut_km,
     uppdaterad_at: new Date().toISOString(),
-  }, { onConflict: 'user_id,ar' });
+  }, { onConflict: 'user_id,ar,bil' });
 
   revalidatePath('/admin/korjournal');
 }
