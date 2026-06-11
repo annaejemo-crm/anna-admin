@@ -153,7 +153,7 @@ export default async function KorjournalPage(props: { searchParams?: Promise<{ a
       {/* Lägg till ny rad. Öppet direkt så det är som en excel-rad. */}
       <section className="bg-white border border-line-soft rounded-sm p-5 mb-8">
         <div className="eyebrow mb-3">Lägg till resa</div>
-        <form action={skapaKorjournalpost} className="grid grid-cols-[140px_1fr_1.4fr_1fr_90px_auto] gap-2 items-end">
+        <form action={skapaKorjournalpost} className="grid grid-cols-[110px_1fr_1.2fr_1.2fr_1fr_80px_auto] gap-2 items-end">
           <input type="hidden" name="bil" value={valdBil} />
           <div>
             <label className="block text-[10px] uppercase tracking-wider text-ink-muted mb-1">Datum</label>
@@ -164,8 +164,12 @@ export default async function KorjournalPage(props: { searchParams?: Promise<{ a
             <input type="text" name="syfte" required defaultValue="Fotografering" className="w-full px-2 py-2 border border-line-soft rounded-sm text-sm" />
           </div>
           <div>
-            <label className="block text-[10px] uppercase tracking-wider text-ink-muted mb-1">Plats / Adress</label>
-            <input type="text" name="plats_namn" placeholder="t.ex. Frölundavägen 3" className="w-full px-2 py-2 border border-line-soft rounded-sm text-sm" />
+            <label className="block text-[10px] uppercase tracking-wider text-ink-muted mb-1">Från adress</label>
+            <input type="text" name="fran_adress" placeholder="Från" className="w-full px-2 py-2 border border-line-soft rounded-sm text-sm" />
+          </div>
+          <div>
+            <label className="block text-[10px] uppercase tracking-wider text-ink-muted mb-1">Till adress</label>
+            <input type="text" name="plats_namn" placeholder="Till" className="w-full px-2 py-2 border border-line-soft rounded-sm text-sm" />
           </div>
           <div>
             <label className="block text-[10px] uppercase tracking-wider text-ink-muted mb-1">Kund</label>
@@ -208,10 +212,11 @@ export default async function KorjournalPage(props: { searchParams?: Promise<{ a
                   </span>
                 </header>
                 <div className="text-sm">
-                  <div className="grid grid-cols-[140px_1fr_1.4fr_1fr_110px_140px] text-left text-[11px] uppercase tracking-wider text-ink-muted">
+                  <div className="grid grid-cols-[120px_1fr_1.3fr_1.3fr_1fr_100px_130px] text-left text-[11px] uppercase tracking-wider text-ink-muted">
                     <div className="px-3 py-2.5 font-medium">Datum</div>
                     <div className="px-3 py-2.5 font-medium">Syfte</div>
-                    <div className="px-3 py-2.5 font-medium">Plats / Adress</div>
+                    <div className="px-3 py-2.5 font-medium">Från adress</div>
+                    <div className="px-3 py-2.5 font-medium">Till adress</div>
                     <div className="px-3 py-2.5 font-medium">Kund</div>
                     <div className="px-3 py-2.5 font-medium text-right">Km (T/R)</div>
                     <div className="px-3 py-2.5 font-medium" />
@@ -220,7 +225,7 @@ export default async function KorjournalPage(props: { searchParams?: Promise<{ a
                     <form
                       key={p.id}
                       action={uppdateraKorjournalpost}
-                      className="grid grid-cols-[140px_1fr_1.4fr_1fr_110px_140px] gap-0 items-stretch border-t border-line-soft"
+                      className="grid grid-cols-[120px_1fr_1.3fr_1.3fr_1fr_100px_130px] gap-0 items-stretch border-t border-line-soft"
                     >
                       <input type="hidden" name="id" value={p.id} />
                       <input type="hidden" name="plats_adress" defaultValue={p.plats_adress || ''} />
@@ -238,9 +243,16 @@ export default async function KorjournalPage(props: { searchParams?: Promise<{ a
                       />
                       <input
                         type="text"
+                        name="fran_adress"
+                        defaultValue={p.fran_adress || ''}
+                        placeholder="Från"
+                        className="px-3 py-3 text-sm text-ink-muted bg-transparent hover:bg-bg-subtle focus:bg-white focus:outline-1 focus:outline focus:outline-ink"
+                      />
+                      <input
+                        type="text"
                         name="plats_namn"
                         defaultValue={p.plats_namn || ''}
-                        placeholder="Plats"
+                        placeholder="Till"
                         className="px-3 py-3 text-sm text-ink-muted bg-transparent hover:bg-bg-subtle focus:bg-white focus:outline-1 focus:outline focus:outline-ink"
                       />
                       <input
