@@ -1,14 +1,18 @@
 import { createClient } from '@/lib/supabase/server';
-import { flyttaKorjournalpost, raderaKorjournalpost, skapaKorjournalpost, sparaMatarstallning, synkaKorjournalFranBokningar, uppdateraKorjournalpost } from './actions';
+import { bytBilForKorjournalpost, flyttaKorjournalpost, raderaKorjournalpost, skapaKorjournalpost, sparaMatarstallning, synkaKorjournalFranBokningar, uppdateraKorjournalpost } from './actions';
+
+const BILAR = ['TMX76G', 'UDD408'] as const;
+type BilKod = typeof BILAR[number];
 
 const MILERSATTNING_KR_PER_MIL = 25;
 const MONTH_NAMES = ['januari', 'februari', 'mars', 'april', 'maj', 'juni', 'juli', 'augusti', 'september', 'oktober', 'november', 'december'];
 
-export default async function KorjournalPage(props: { searchParams?: Promise<{ ar?: string }> }) {
+export default async function KorjournalPage(props: { searchParams?: Promise<{ ar?: string; bil?: string }> }) {
   const supabase = await createClient();
   const sp = props.searchParams ? await props.searchParams : {};
   const aktuelltAr = new Date().getFullYear();
   const valtAr = sp.ar ? parseInt(sp.ar, 10) : aktuelltAr;
+  const valdBil: BilKod = (BILAR as readonly string[]).includes(sp.bil || '') ? (sp.bil as BilKod) : 'TMX76G';
 
   const start = `${valtAr}-01-01`;
   const slut = `${valtAr}-12-31`;
@@ -23,11 +27,13 @@ export default async function KorjournalPage(props: { searchParams?: Promise<{ a
     .from('matarstallning')
     .select('*')
     .eq('ar', valtAr)
+    .eq('bil', valdBil)
     .maybeSingle();
 
   const { data } = await supabase
     .from('korjournal')
     .select('*')
+    .eq('bil', valdBil)
     .gte('datum', start)
     .lte('datum', slut)
     .order('datum', { ascending: true })
@@ -71,7 +77,7 @@ export default async function KorjournalPage(props: { searchParams?: Promise<{ a
               </button>
             </form>
             <a
-              href={`/admin/korjournal/export?ar=${valtAr}`}
+              href={`/admin/korjournal/export?ar=${valtAr}&bil=${valdBil}`}
               className="text-sm px-4 py-2 border border-line-soft rounded-sm hover:border-ink transition-colors"
             >
               Exportera till Excel
@@ -83,9 +89,12 @@ export default async function KorjournalPage(props: { searchParams?: Promise<{ a
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
           <span className="font-mono text-[10px] tracking-[0.16em] uppercase text-ink-faint">År:</span>
-          <YearPill ar={2026} aktiv={valtAr === 2026} aktuellt={aktuelltAr === 2026} />
-          <YearPill ar={2025} aktiv={valtAr === 2025} aktuellt={aktuelltAr === 2025} />
-          <YearPill ar={2024} aktiv={valtAr === 2024} aktuellt={aktuelltAr === 2024} />
+          <YearPill ar={2026} aktiv={valtAr === 2026} aktuellt={aktuelltAr === 2026} bil={valdBil} />
+          <YearPill ar={2025} aktiv={valtAr === 2025} aktuellt={aktuelltAr === 2025} bil={valdBil} />
+          <YearPill ar={2024} aktiv={valtAr === 2024} aktuellt={aktuelltAr === 2024} bil={valdBil} />
+          <span className="font-mono text-[10px] tracking-[0.16em] uppercase text-ink-faint ml-4">Bil:</span>
+          <BilPill bil="TMX76G" aktiv={valdBil === 'TMX76G'} ar={valtAr} />
+          <BilPill bil="UDD408" aktiv={valdBil === 'UDD408'} ar={valtAr} />
         </div>
         <div className="text-sm text-ink-muted">
           Året totalt: <strong className="text-ink font-medium">{aretKm.toLocaleString('sv-SE')} km</strong>
@@ -109,6 +118,7 @@ export default async function KorjournalPage(props: { searchParams?: Promise<{ a
           </summary>
           <form action={sparaMatarstallning} className="mt-4 grid grid-cols-[1fr_1fr_auto] gap-4 items-end">
             <input type="hidden" name="ar" value={valtAr} />
+            <input type="hidden" name="bil" value={valdBil} />
             <div>
               <label className="block text-[11px] uppercase tracking-wider text-ink-muted mb-1.5">
                 Mätarställning vid årets början (km)
@@ -144,6 +154,7 @@ export default async function KorjournalPage(props: { searchParams?: Promise<{ a
       <section className="bg-white border border-line-soft rounded-sm p-5 mb-8">
         <div className="eyebrow mb-3">Lägg till resa</div>
         <form action={skapaKorjournalpost} className="grid grid-cols-[140px_1fr_1.4fr_1fr_90px_auto] gap-2 items-end">
+          <input type="hidden" name="bil" value={valdBil} />
           <div>
             <label className="block text-[10px] uppercase tracking-wider text-ink-muted mb-1">Datum</label>
             <input type="date" name="datum" required defaultValue={idagDatum} className="w-full px-2 py-2 border border-line-soft rounded-sm text-sm" />
@@ -197,7 +208,7 @@ export default async function KorjournalPage(props: { searchParams?: Promise<{ a
                   </span>
                 </header>
                 <div className="text-sm">
-                  <div className="grid grid-cols-[140px_1fr_1.4fr_1fr_110px_100px] text-left text-[11px] uppercase tracking-wider text-ink-muted">
+                  <div className="grid grid-cols-[140px_1fr_1.4fr_1fr_110px_140px] text-left text-[11px] uppercase tracking-wider text-ink-muted">
                     <div className="px-3 py-2.5 font-medium">Datum</div>
                     <div className="px-3 py-2.5 font-medium">Syfte</div>
                     <div className="px-3 py-2.5 font-medium">Plats / Adress</div>
@@ -209,7 +220,7 @@ export default async function KorjournalPage(props: { searchParams?: Promise<{ a
                     <form
                       key={p.id}
                       action={uppdateraKorjournalpost}
-                      className="grid grid-cols-[140px_1fr_1.4fr_1fr_110px_100px] gap-0 items-stretch border-t border-line-soft"
+                      className="grid grid-cols-[140px_1fr_1.4fr_1fr_110px_140px] gap-0 items-stretch border-t border-line-soft"
                     >
                       <input type="hidden" name="id" value={p.id} />
                       <input type="hidden" name="plats_adress" defaultValue={p.plats_adress || ''} />
@@ -250,6 +261,7 @@ export default async function KorjournalPage(props: { searchParams?: Promise<{ a
                       <div className="flex items-center justify-end gap-1.5 pr-2">
                         <button type="submit" name="riktning" value="upp" formAction={flyttaKorjournalpost} className="text-[12px] text-ink-faint hover:text-ink leading-none" title="Flytta upp">↑</button>
                         <button type="submit" name="riktning" value="ner" formAction={flyttaKorjournalpost} className="text-[12px] text-ink-faint hover:text-ink leading-none" title="Flytta ner">↓</button>
+                        <button type="submit" formAction={bytBilForKorjournalpost} className="text-[10px] font-mono text-ink-faint hover:text-ink leading-none" title={`Flytta till ${valdBil === 'TMX76G' ? 'UDD408' : 'TMX76G'}`}>→{valdBil === 'TMX76G' ? 'UDD' : 'TMX'}</button>
                         <button type="submit" className="text-[11px] text-ink-faint hover:text-ink" title="Spara ändringar">Spara</button>
                         <button type="submit" formAction={raderaKorjournalpost} className="text-[11px] text-ink-faint hover:text-danger" title="Radera raden">×</button>
                       </div>
@@ -265,15 +277,28 @@ export default async function KorjournalPage(props: { searchParams?: Promise<{ a
   );
 }
 
-function YearPill(props: { ar: number; aktiv: boolean; aktuellt: boolean }) {
+function YearPill(props: { ar: number; aktiv: boolean; aktuellt: boolean; bil: string }) {
   return (
     <a
-      href={`/admin/korjournal?ar=${props.ar}`}
+      href={`/admin/korjournal?ar=${props.ar}&bil=${props.bil}`}
       className={`px-3 py-1.5 text-sm rounded-sm transition-colors ${
         props.aktiv ? 'bg-ink text-bg' : 'bg-white border border-line-soft text-ink hover:border-line'
       }`}
     >
       {props.ar}{props.aktuellt ? ' · aktuellt' : ''}
+    </a>
+  );
+}
+
+function BilPill(props: { bil: string; aktiv: boolean; ar: number }) {
+  return (
+    <a
+      href={`/admin/korjournal?ar=${props.ar}&bil=${props.bil}`}
+      className={`px-3 py-1.5 text-sm rounded-sm font-mono transition-colors ${
+        props.aktiv ? 'bg-ink text-bg' : 'bg-white border border-line-soft text-ink hover:border-line'
+      }`}
+    >
+      {props.bil}
     </a>
   );
 }
