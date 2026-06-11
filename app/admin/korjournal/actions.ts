@@ -14,12 +14,12 @@ export async function raderaKorjournalpost(formData: FormData) {
 /**
  * Flytta en körjournal-rad uppåt eller nedåt inom samma datum.
  * Byter pos-värde med raden ovanför/under.
+ * Separata server actions för upp och ner eftersom Next 15 skriver över
+ * name-attributet på knappar med formAction.
  */
-export async function flyttaKorjournalpost(formData: FormData) {
+async function flyttaRad(id: string, riktning: 'upp' | 'ner') {
   const supabase = await createClient();
-  const id = String(formData.get('id') || '');
-  const riktning = String(formData.get('riktning') || '');
-  if (!id || (riktning !== 'upp' && riktning !== 'ner')) return;
+  if (!id) return;
 
   const { data: rad } = await supabase
     .from('korjournal')
@@ -28,33 +28,52 @@ export async function flyttaKorjournalpost(formData: FormData) {
     .maybeSingle();
   if (!rad) return;
 
+  const radPos = (rad.pos as number) ?? 0;
+
   // Hämta granne med samma datum OCH samma bil (annars swap:as resor mellan bilar)
   let queryGranne = supabase
     .from('korjournal')
     .select('id, pos')
     .eq('datum', rad.datum)
-    .eq('bil', rad.bil);
+    .eq('bil', rad.bil)
+    .neq('id', rad.id);
 
   if (riktning === 'upp') {
-    queryGranne = queryGranne.lt('pos', rad.pos).order('pos', { ascending: false }).limit(1);
+    queryGranne = queryGranne.lte('pos', radPos).order('pos', { ascending: false }).limit(1);
   } else {
-    queryGranne = queryGranne.gt('pos', rad.pos).order('pos', { ascending: true }).limit(1);
+    queryGranne = queryGranne.gte('pos', radPos).order('pos', { ascending: true }).limit(1);
   }
 
   const { data: grannar } = await queryGranne;
   const granne = grannar && grannar[0];
 
   if (granne) {
-    // Byt pos-värden
-    await supabase.from('korjournal').update({ pos: granne.pos }).eq('id', rad.id);
-    await supabase.from('korjournal').update({ pos: rad.pos }).eq('id', granne.id);
+    const grannePos = (granne.pos as number) ?? 0;
+    // Om pos är samma så bumpa rad ett steg innan swap så de inte krockar
+    if (grannePos === radPos) {
+      const tempPos = riktning === 'upp' ? radPos - 1 : radPos + 1;
+      await supabase.from('korjournal').update({ pos: tempPos }).eq('id', rad.id);
+    } else {
+      await supabase.from('korjournal').update({ pos: grannePos }).eq('id', rad.id);
+      await supabase.from('korjournal').update({ pos: radPos }).eq('id', granne.id);
+    }
   } else {
-    // Ingen granne med pos-skillnad. Sätt nytt pos relativt rad.
-    const nyPos = riktning === 'upp' ? (rad.pos as number) - 1 : (rad.pos as number) + 1;
+    // Ingen granne. Sätt nytt pos relativt rad.
+    const nyPos = riktning === 'upp' ? radPos - 1 : radPos + 1;
     await supabase.from('korjournal').update({ pos: nyPos }).eq('id', rad.id);
   }
 
   revalidatePath('/admin/korjournal');
+}
+
+export async function flyttaKorjournalpostUpp(formData: FormData) {
+  const id = String(formData.get('id') || '');
+  await flyttaRad(id, 'upp');
+}
+
+export async function flyttaKorjournalpostNer(formData: FormData) {
+  const id = String(formData.get('id') || '');
+  await flyttaRad(id, 'ner');
 }
 
 /**
