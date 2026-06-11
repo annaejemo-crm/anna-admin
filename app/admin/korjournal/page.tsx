@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { bytBilForKorjournalpost, flyttaKorjournalpostNer, flyttaKorjournalpostUpp, raderaKorjournalpost, skapaKorjournalpost, sparaMatarstallning, synkaKorjournalFranBokningar, uppdateraKorjournalpost } from './actions';
+import KorjournalRad from './KorjournalRad';
 
 const BILAR = ['TMX76G', 'UDD408'] as const;
 type BilKod = typeof BILAR[number];
@@ -222,63 +223,16 @@ export default async function KorjournalPage(props: { searchParams?: Promise<{ a
                     <div className="px-3 py-2.5 font-medium" />
                   </div>
                   {matchande.map((p: any) => (
-                    <form
+                    <KorjournalRad
                       key={p.id}
-                      action={uppdateraKorjournalpost}
-                      className="grid grid-cols-[120px_1fr_1.3fr_1.3fr_1fr_100px_170px] gap-0 items-stretch border-t border-line-soft"
-                    >
-                      <input type="hidden" name="id" value={p.id} />
-                      <input type="hidden" name="plats_adress" defaultValue={p.plats_adress || ''} />
-                      <input
-                        type="date"
-                        name="datum"
-                        defaultValue={p.datum ? new Date(p.datum).toISOString().slice(0, 10) : ''}
-                        className="px-3 py-3 font-mono text-[12px] bg-transparent hover:bg-bg-subtle focus:bg-white focus:outline-1 focus:outline focus:outline-ink"
-                      />
-                      <input
-                        type="text"
-                        name="syfte"
-                        defaultValue={p.syfte || ''}
-                        className="px-3 py-3 text-sm bg-transparent hover:bg-bg-subtle focus:bg-white focus:outline-1 focus:outline focus:outline-ink"
-                      />
-                      <input
-                        type="text"
-                        name="fran_adress"
-                        defaultValue={p.fran_adress || ''}
-                        placeholder="Från"
-                        className="px-3 py-3 text-sm text-ink-muted bg-transparent hover:bg-bg-subtle focus:bg-white focus:outline-1 focus:outline focus:outline-ink"
-                      />
-                      <input
-                        type="text"
-                        name="plats_namn"
-                        defaultValue={p.plats_namn || ''}
-                        placeholder="Till"
-                        className="px-3 py-3 text-sm text-ink-muted bg-transparent hover:bg-bg-subtle focus:bg-white focus:outline-1 focus:outline focus:outline-ink"
-                      />
-                      <input
-                        type="text"
-                        name="medfoljande"
-                        defaultValue={p.medfoljande || ''}
-                        placeholder="Kund"
-                        className="px-3 py-3 text-[12.5px] text-ink-muted bg-transparent hover:bg-bg-subtle focus:bg-white focus:outline-1 focus:outline focus:outline-ink"
-                      />
-                      <input
-                        type="text"
-                        name="antal_km"
-                        inputMode="decimal"
-                        defaultValue={p.antal_km != null ? String(Number(p.antal_km)).replace('.', ',') : ''}
-                        placeholder="0"
-                        className="px-3 py-3 text-right font-mono text-[12.5px] bg-transparent hover:bg-bg-subtle focus:bg-white focus:outline-1 focus:outline focus:outline-ink"
-                      />
-                      <div className="flex items-center justify-end gap-0.5 pr-2">
-                        <button type="submit" formAction={flyttaKorjournalpostUpp} className="w-7 h-7 flex items-center justify-center text-[16px] text-ink-muted hover:text-ink hover:bg-bg-subtle rounded-sm leading-none" title="Flytta upp">↑</button>
-                        <button type="submit" formAction={flyttaKorjournalpostNer} className="w-7 h-7 flex items-center justify-center text-[16px] text-ink-muted hover:text-ink hover:bg-bg-subtle rounded-sm leading-none" title="Flytta ner">↓</button>
-                        <span className="w-px h-5 bg-line mx-1" />
-                        <button type="submit" formAction={bytBilForKorjournalpost} className="px-2 h-7 text-[10px] font-mono text-ink-faint hover:text-ink hover:bg-bg-subtle rounded-sm" title={`Flytta till ${valdBil === 'TMX76G' ? 'UDD408' : 'TMX76G'}`}>→{valdBil === 'TMX76G' ? 'UDD' : 'TMX'}</button>
-                        <button type="submit" className="px-2 h-7 text-[11px] text-ink-faint hover:text-ink hover:bg-bg-subtle rounded-sm" title="Spara ändringar">Spara</button>
-                        <button type="submit" formAction={raderaKorjournalpost} className="w-7 h-7 flex items-center justify-center text-[14px] text-ink-faint hover:text-danger hover:bg-bg-subtle rounded-sm" title="Radera raden">×</button>
-                      </div>
-                    </form>
+                      post={p}
+                      valdBil={valdBil}
+                      uppdateraAction={uppdateraKorjournalpost}
+                      raderaAction={raderaKorjournalpost}
+                      bytBilAction={bytBilForKorjournalpost}
+                      flyttaUppAction={flyttaKorjournalpostUpp}
+                      flyttaNerAction={flyttaKorjournalpostNer}
+                    />
                   ))}
                 </div>
               </section>
