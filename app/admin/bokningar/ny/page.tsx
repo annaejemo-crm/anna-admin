@@ -7,7 +7,7 @@ export default async function NyBokningPage(props: { searchParams?: Promise<{ ku
 
   const { data: kunderRaw } = await supabase
     .from('kunder')
-    .select('id, fornamn, efternamn, foretagsnamn')
+    .select('id, fornamn, efternamn, foretagsnamn, ar_foretagskund')
     .order('fornamn');
   const { data: typerRaw } = await supabase
     .from('fotograferingstyper')
@@ -24,6 +24,7 @@ export default async function NyBokningPage(props: { searchParams?: Promise<{ ku
     return {
       id: k.id,
       label: k.foretagsnamn || `${k.fornamn} ${k.efternamn || ''}`.trim(),
+      arForetagskund: !!k.ar_foretagskund,
     };
   });
   const typer = (typerRaw || []) as { id: string; namn: string }[];
