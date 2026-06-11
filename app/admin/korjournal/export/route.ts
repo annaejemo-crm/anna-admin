@@ -8,6 +8,7 @@ import { NextResponse } from 'next/server';
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const ar = url.searchParams.get('ar') || new Date().getFullYear().toString();
+  const bil = url.searchParams.get('bil') || 'TMX76G';
   const start = `${ar}-01-01`;
   const slut = `${ar}-12-31`;
 
@@ -24,11 +25,13 @@ export async function GET(request: Request) {
     .from('matarstallning')
     .select('borjan_km, slut_km')
     .eq('ar', parseInt(ar, 10))
+    .eq('bil', bil)
     .maybeSingle();
 
   const { data } = await supabase
     .from('korjournal')
     .select('*')
+    .eq('bil', bil)
     .gte('datum', start)
     .lte('datum', slut)
     .order('datum', { ascending: true });
@@ -38,7 +41,7 @@ export async function GET(request: Request) {
   const rader: string[] = [];
 
   // Header som matchar Annas Excel
-  rader.push(`KÖRJOURNAL ${ar} - ANNA EJEMO AB`);
+  rader.push(`KÖRJOURNAL ${ar} - ${bil} - ANNA EJEMO AB`);
   if (matar?.borjan_km != null || matar?.slut_km != null) {
     const borjan = matar?.borjan_km != null ? `${Number(matar.borjan_km).toLocaleString('sv-SE')} km` : '—';
     const slut = matar?.slut_km != null ? `${Number(matar.slut_km).toLocaleString('sv-SE')} km` : '—';
@@ -92,7 +95,7 @@ export async function GET(request: Request) {
     status: 200,
     headers: {
       'Content-Type': 'text/csv; charset=utf-8',
-      'Content-Disposition': `attachment; filename="korjournal-${ar}.csv"`,
+      'Content-Disposition': `attachment; filename="korjournal-${ar}-${bil}.csv"`,
     },
   });
 }
