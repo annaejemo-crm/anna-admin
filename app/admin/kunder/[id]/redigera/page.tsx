@@ -44,8 +44,19 @@ export default async function RedigeraKundPage(props: { params: Promise<{ id: st
 
         <Section title="Företag (om relevant)">
           <Field label="Företagsnamn">
-            <input type="text" name="foretagsnamn" defaultValue={kund.foretagsnamn || ''} className={inputStyle} placeholder="Lämna tomt för privatkund" />
+            <input type="text" name="foretagsnamn" defaultValue={kund.foretagsnamn || ''} className={inputStyle} placeholder="Lämna tomt om kunden inte har företag" />
           </Field>
+          <label className="flex items-center gap-3 cursor-pointer pt-2">
+            <input
+              type="checkbox"
+              name="ar_foretagskund"
+              defaultChecked={!!kund.ar_foretagskund}
+              className="w-4 h-4 accent-ink"
+            />
+            <span className="text-sm">
+              Företagskund (priser anges exklusive moms)
+            </span>
+          </label>
         </Section>
 
         <Section title="Kontakt">
