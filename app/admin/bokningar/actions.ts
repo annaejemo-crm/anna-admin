@@ -128,6 +128,7 @@ export async function updateBokning(formData: FormData) {
           plats_adress,
           antal_km: avstand_km_enkel * 2,
           medfoljande: kundNamn || null,
+          bil: 'TMX76G',
         });
       }
     }
@@ -218,6 +219,7 @@ export async function gaVidare(formData: FormData) {
         plats_adress: platsAdress,
         antal_km: tor,
         medfoljande: kundNamn || null,
+        bil: 'TMX76G',
       });
     }
   } else {
