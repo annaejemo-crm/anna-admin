@@ -49,13 +49,16 @@ export default async function KundDetaljPage(props: { params: Promise<{ id: stri
   const totalPaid = sumAvgiftPaid + sumPaketPaid;
 
   const kundNamn = kund.foretagsnamn || `${kund.fornamn} ${kund.efternamn || ''}`.trim();
+  const arForetagskund = !!kund.ar_foretagskund;
+  const momsBelopp = arForetagskund ? Math.round(total * 0.25) : 0;
+  const totalInkMoms = arForetagskund ? total + momsBelopp : total;
 
   return (
     <>
       <div className="mb-10 pb-6 border-b border-line">
         <div className="flex justify-between items-start">
           <div>
-            <div className="eyebrow mb-1.5">{kund.foretagsnamn ? 'Företagskund' : 'Privatkund'}</div>
+            <div className="eyebrow mb-1.5">{arForetagskund ? 'Företagskund (priser ex moms)' : 'Privatkund'}</div>
             <h1 className="font-serif text-[42px] font-light leading-tight">{kundNamn}</h1>
             <div className="mt-3 text-sm text-ink-muted">{bokningar.length} bokningar</div>
             <div className="mt-2 flex gap-6 text-sm text-ink-muted">
@@ -72,11 +75,17 @@ export default async function KundDetaljPage(props: { params: Promise<{ id: stri
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-6 mb-12">
-        <SumCard label="Bokningsavgifter" total={sumAvgift} inkommet={sumAvgiftPaid} />
-        <SumCard label="Bildpaket" total={sumPaket} inkommet={sumPaketPaid} />
-        <SumCard label="Totalt" total={total} inkommet={totalPaid} />
+      <div className="grid grid-cols-3 gap-6 mb-3">
+        <SumCard label={arForetagskund ? 'Bokningsavgifter (ex moms)' : 'Bokningsavgifter'} total={sumAvgift} inkommet={sumAvgiftPaid} />
+        <SumCard label={arForetagskund ? 'Bildpaket (ex moms)' : 'Bildpaket'} total={sumPaket} inkommet={sumPaketPaid} />
+        <SumCard label={arForetagskund ? 'Totalt ex moms' : 'Totalt'} total={total} inkommet={totalPaid} />
       </div>
+      {arForetagskund && (
+        <div className="mb-12 px-1 text-sm text-ink-muted font-mono">
+          + {momsBelopp.toLocaleString('sv-SE')} kr moms = <strong className="text-ink font-medium">{totalInkMoms.toLocaleString('sv-SE')} kr inkl moms</strong> totalt
+        </div>
+      )}
+      {!arForetagskund && <div className="mb-12" />}
 
       <div className="flex justify-between items-end mb-4">
         <h2 className="font-serif text-2xl">Bokningar</h2>
