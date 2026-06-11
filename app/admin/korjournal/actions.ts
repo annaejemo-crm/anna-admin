@@ -23,16 +23,17 @@ export async function flyttaKorjournalpost(formData: FormData) {
 
   const { data: rad } = await supabase
     .from('korjournal')
-    .select('id, datum, pos')
+    .select('id, datum, pos, bil')
     .eq('id', id)
     .maybeSingle();
   if (!rad) return;
 
-  // Hämta granne med samma datum
+  // Hämta granne med samma datum OCH samma bil (annars swap:as resor mellan bilar)
   let queryGranne = supabase
     .from('korjournal')
     .select('id, pos')
-    .eq('datum', rad.datum);
+    .eq('datum', rad.datum)
+    .eq('bil', rad.bil);
 
   if (riktning === 'upp') {
     queryGranne = queryGranne.lt('pos', rad.pos).order('pos', { ascending: false }).limit(1);
@@ -249,7 +250,7 @@ export async function sparaMatarstallning(formData: FormData) {
     borjan_km: Number.isNaN(borjan_km as number) ? null : borjan_km,
     slut_km: Number.isNaN(slut_km as number) ? null : slut_km,
     uppdaterad_at: new Date().toISOString(),
-  }, { onConflict: 'user_id,ar,bil' });
+  }, { onConflict: 'user_id,ar,bil' v });
 
   revalidatePath('/admin/korjournal');
 }
