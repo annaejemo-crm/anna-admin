@@ -61,10 +61,11 @@ export async function GET(request: Request) {
     const mil = km / 10;
     const kr = mil * sats;
 
-    // Bygg "Hem - destination - Hem" som i Annas Excel
-    const dest = p.plats_adress || p.plats_namn || '';
-    const adresserStrang = dest
-      ? `${hemadress} - ${dest} - ${hemadress}`
+    // Bygg "Från - Till - Från" så Anna kan styra från-adress per rad
+    const fran = p.fran_adress || hemadress;
+    const till = p.plats_adress || p.plats_namn || '';
+    const adresserStrang = till
+      ? `${fran} - ${till} - ${fran}`
       : '';
 
     rader.push(
