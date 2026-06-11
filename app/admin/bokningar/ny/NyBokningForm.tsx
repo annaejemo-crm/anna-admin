@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { skapaBokning } from '../actions';
 import { PlatsValjare, PlatsOption } from '@/components/PlatsValjare';
+import { PrisFalt } from '@/components/PrisFalt';
 
 const STATUS_LIST: { kod: string; label: string }[] = [
   { kod: 'forfragan', label: 'Förfrågan' },
@@ -19,11 +20,15 @@ const STATUS_LIST: { kod: string; label: string }[] = [
 
 const HUR_HITTADE_FORSLAG = ['Instagram', 'Google', 'Rekommendation', 'Återkommande kund', 'Annat'];
 
-type KundOption = { id: string; label: string };
+type KundOption = { id: string; label: string; arForetagskund?: boolean };
 
 export function NyBokningForm(props: { kunder: KundOption[]; typer: { id: string; namn: string }[]; platser: PlatsOption[]; valdKundId: string | null }) {
   const [kundLage, setKundLage] = useState<'existerande' | 'ny'>(props.valdKundId ? 'existerande' : 'ny');
   const [valdKund, setValdKund] = useState(props.valdKundId || '');
+  const [nyArForetagskund, setNyArForetagskund] = useState(false);
+
+  const valdKundObj = props.kunder.find(function(k) { return k.id === valdKund; });
+  const arForetagskund = kundLage === 'ny' ? nyArForetagskund : !!valdKundObj?.arForetagskund;
 
   return (
     <form action={skapaBokning} className="space-y-8 max-w-3xl">
@@ -63,6 +68,16 @@ export function NyBokningForm(props: { kunder: KundOption[]; typer: { id: string
             <Field label="Företagsnamn (lämna tomt för privatkund)">
               <input type="text" name="foretagsnamn" className={inputStyle} />
             </Field>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                name="ar_foretagskund"
+                checked={nyArForetagskund}
+                onChange={function(e) { setNyArForetagskund(e.target.checked); }}
+                className="w-4 h-4 accent-ink"
+              />
+              <span className="text-sm">Företagskund (priser anges exklusive moms)</span>
+            </label>
             <Row>
               <Field label="Email">
                 <input type="email" name="email" className={inputStyle} />
@@ -117,8 +132,8 @@ export function NyBokningForm(props: { kunder: KundOption[]; typer: { id: string
 
       <Section title="Bokningsavgift">
         <Row>
-          <Field label="Bokningsavgift (kr)">
-            <input type="number" name="bokningsavgift_kr" defaultValue="2000" className={inputStyle} />
+          <Field label={arForetagskund ? 'Bokningsavgift (kr ex moms)' : 'Bokningsavgift (kr)'}>
+            <PrisFalt name="bokningsavgift_kr" defaultValue={2000} arForetagskund={arForetagskund} placeholder="2000" />
           </Field>
           <Field label="Betald">
             <label className="flex items-center gap-2 h-[42px]">
