@@ -46,6 +46,17 @@ export function NyBokningForm(props: { kunder: Kund[]; typer: Typ[] }) {
             <Field label="Förnamn" name="fornamn" required />
             <Field label="Efternamn" name="efternamn" />
             <Field label="Företagsnamn (valfritt)" name="foretagsnamn" />
+            <div className="col-span-2 flex items-center gap-3 pt-1">
+              <input
+                id="ar_foretagskund"
+                type="checkbox"
+                name="ar_foretagskund"
+                className="w-4 h-4 accent-ink"
+              />
+              <Label htmlFor="ar_foretagskund" inline>
+                Företagskund (priser anges exklusive moms)
+              </Label>
+            </div>
             <Field label="Email" name="email" type="email" />
             <Field label="Telefon" name="telefon" type="tel" />
             <Field label="Hur hittade kunden mig" name="hur_hittade" placeholder="Instagram, Google, rekommendation..." />
