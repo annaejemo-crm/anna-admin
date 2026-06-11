@@ -1,0 +1,9 @@
+-- Lägger till kolumn för att markera kunder som företagskunder.
+-- Backfill: alla kunder som har företagsnamn ifyllt markeras automatiskt som företagskund.
+
+alter table kunder add column if not exists ar_foretagskund boolean default false;
+
+update kunder
+set ar_foretagskund = true
+where coalesce(foretagsnamn, '') <> ''
+  and ar_foretagskund is not true;
