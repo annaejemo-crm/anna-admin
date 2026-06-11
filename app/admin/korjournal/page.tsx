@@ -176,7 +176,7 @@ export default async function KorjournalPage(props: { searchParams?: Promise<{ a
             <input type="text" name="medfoljande" placeholder="Namn" className="w-full px-2 py-2 border border-line-soft rounded-sm text-sm" />
           </div>
           <div>
-            <label className="block text-[10px] uppercase tracking-wider text-ink-muted mb-1">Km (T/R)</label>
+            <label className="block text-[10px] uppercase tracking-wider text-ink-muted mb-1">Km</label>
             <input type="text" name="antal_km" inputMode="decimal" placeholder="0" className="w-full px-2 py-2 border border-line-soft rounded-sm text-sm" />
           </div>
           <button type="submit" className="px-4 py-2 bg-ink text-bg text-sm rounded-sm">Spara</button>
@@ -218,7 +218,7 @@ export default async function KorjournalPage(props: { searchParams?: Promise<{ a
                     <div className="px-3 py-2.5 font-medium">Från adress</div>
                     <div className="px-3 py-2.5 font-medium">Till adress</div>
                     <div className="px-3 py-2.5 font-medium">Kund</div>
-                    <div className="px-3 py-2.5 font-medium text-right">Km (T/R)</div>
+                    <div className="px-3 py-2.5 font-medium text-right">Km</div>
                     <div className="px-3 py-2.5 font-medium" />
                   </div>
                   {matchande.map((p: any) => (
