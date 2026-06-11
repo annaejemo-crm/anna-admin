@@ -75,17 +75,14 @@ export default async function KundDetaljPage(props: { params: Promise<{ id: stri
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-6 mb-3">
-        <SumCard label={arForetagskund ? 'Bokningsavgifter (ex moms)' : 'Bokningsavgifter'} total={sumAvgift} inkommet={sumAvgiftPaid} />
-        <SumCard label={arForetagskund ? 'Bildpaket (ex moms)' : 'Bildpaket'} total={sumPaket} inkommet={sumPaketPaid} />
+      <div className={`grid ${arForetagskund ? 'grid-cols-4' : 'grid-cols-3'} gap-6 mb-12`}>
+        <SumCard label={arForetagskund ? 'Bokningsavgifter ex moms' : 'Bokningsavgifter'} total={sumAvgift} inkommet={sumAvgiftPaid} />
+        <SumCard label={arForetagskund ? 'Bildpaket ex moms' : 'Bildpaket'} total={sumPaket} inkommet={sumPaketPaid} />
         <SumCard label={arForetagskund ? 'Totalt ex moms' : 'Totalt'} total={total} inkommet={totalPaid} />
+        {arForetagskund && (
+          <SumCard label="Totalt inkl moms" total={totalInkMoms} inkommet={totalPaid + Math.round(totalPaid * 0.25)} accent />
+        )}
       </div>
-      {arForetagskund && (
-        <div className="mb-12 px-1 text-sm text-ink-muted font-mono">
-          + {momsBelopp.toLocaleString('sv-SE')} kr moms = <strong className="text-ink font-medium">{totalInkMoms.toLocaleString('sv-SE')} kr inkl moms</strong> totalt
-        </div>
-      )}
-      {!arForetagskund && <div className="mb-12" />}
 
       <div className="flex justify-between items-end mb-4">
         <h2 className="font-serif text-2xl">Bokningar</h2>
@@ -152,6 +149,11 @@ export default async function KundDetaljPage(props: { params: Promise<{ id: stri
                   </td>
                   <td className="px-4 py-3.5 text-right font-mono text-[12.5px]">
                     {((b.bokningsavgift_kr || 0) + (b.bildpaket_kr || 0)).toLocaleString('sv-SE')} kr
+                    {arForetagskund && (
+                      <div className="text-[11px] text-ink-muted mt-0.5">
+                        {Math.round(((b.bokningsavgift_kr || 0) + (b.bildpaket_kr || 0)) * 1.25).toLocaleString('sv-SE')} kr ink moms
+                      </div>
+                    )}
                   </td>
                   <td className="px-4 py-3.5 text-right">
                     <div className="flex gap-3 justify-end items-center">
@@ -186,12 +188,13 @@ export default async function KundDetaljPage(props: { params: Promise<{ id: stri
   );
 }
 
-function SumCard(props: { label: string; total: number; inkommet: number }) {
+function SumCard(props: { label: string; total: number; inkommet: number; accent?: boolean }) {
+  const accent = !!props.accent;
   return (
-    <div className="bg-white border border-line-soft rounded-sm px-7 py-6">
-      <div className="eyebrow mb-3">{props.label}</div>
+    <div className={`rounded-sm px-7 py-6 border ${accent ? 'bg-ink text-bg border-ink' : 'bg-white border-line-soft'}`}>
+      <div className={`eyebrow mb-3 ${accent ? 'text-bg/70' : ''}`}>{props.label}</div>
       <div className="font-serif text-[34px] leading-none tracking-tight">{props.total.toLocaleString('sv-SE')} kr</div>
-      <div className="text-[12px] text-ink-muted mt-1.5">Inkommet: {props.inkommet.toLocaleString('sv-SE')} kr</div>
+      <div className={`text-[12px] mt-1.5 ${accent ? 'text-bg/70' : 'text-ink-muted'}`}>Inkommet: {props.inkommet.toLocaleString('sv-SE')} kr</div>
     </div>
   );
 }
@@ -213,7 +216,7 @@ function PaidCell(props: { id: string; kundId: string; kind: 'avgift' | 'paket';
     }
   } else {
     dotColor = props.betald ? 'bg-positive' : 'bg-line';
-    hjalp = props.betald ? 'Betald (klicka för att avmarkera)' : 'Ej betald (klicka för att markera)';
+    hja,p = props.betald ? 'Betald (klicka för att avmarkera)' : 'Ej betald (klicka för att markera)';
   }
   return (
     <form action={togglePaid} className="inline-flex items-center gap-2 justify-end">
