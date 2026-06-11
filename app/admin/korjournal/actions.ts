@@ -250,7 +250,7 @@ export async function sparaMatarstallning(formData: FormData) {
     borjan_km: Number.isNaN(borjan_km as number) ? null : borjan_km,
     slut_km: Number.isNaN(slut_km as number) ? null : slut_km,
     uppdaterad_at: new Date().toISOString(),
-  }, { onConflict: 'user_id,ar,bil' v });
+  }, { onConflict: 'user_id,ar,bil' });
 
   revalidatePath('/admin/korjournal');
 }
