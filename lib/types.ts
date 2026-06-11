@@ -1,6 +1,6 @@
-/* ====================================================================
+/* =======================================================================
    TypeScript-typer som speglar databasschemat (00_initial.sql)
-   ====================================================================== */
+   ======================================================================= */
 
 export type StatusKod =
   | 'forfragan'
@@ -81,6 +81,7 @@ export type Kund = {
   fornamn: string;
   efternamn: string | null;
   foretagsnamn: string | null;
+  ar_foretagskund: boolean | null;
   email: string | null;
   telefon: string | null;
   hur_hittade: string | null;
