@@ -212,7 +212,7 @@ export default async function KorjournalPage(props: { searchParams?: Promise<{ a
                   </span>
                 </header>
                 <div className="text-sm">
-                  <div className="grid grid-cols-[120px_1fr_1.3fr_1.3fr_1fr_100px_130px] text-left text-[11px] uppercase tracking-wider text-ink-muted">
+                  <div className="grid grid-cols-[120px_1fr_1.3fr_1.3fr_1fr_100px_170px] text-left text-[11px] uppercase tracking-wider text-ink-muted">
                     <div className="px-3 py-2.5 font-medium">Datum</div>
                     <div className="px-3 py-2.5 font-medium">Syfte</div>
                     <div className="px-3 py-2.5 font-medium">Från adress</div>
@@ -225,7 +225,7 @@ export default async function KorjournalPage(props: { searchParams?: Promise<{ a
                     <form
                       key={p.id}
                       action={uppdateraKorjournalpost}
-                      className="grid grid-cols-[120px_1fr_1.3fr_1.3fr_1fr_100px_130px] gap-0 items-stretch border-t border-line-soft"
+                      className="grid grid-cols-[120px_1fr_1.3fr_1.3fr_1fr_100px_170px] gap-0 items-stretch border-t border-line-soft"
                     >
                       <input type="hidden" name="id" value={p.id} />
                       <input type="hidden" name="plats_adress" defaultValue={p.plats_adress || ''} />
@@ -270,12 +270,13 @@ export default async function KorjournalPage(props: { searchParams?: Promise<{ a
                         placeholder="0"
                         className="px-3 py-3 text-right font-mono text-[12.5px] bg-transparent hover:bg-bg-subtle focus:bg-white focus:outline-1 focus:outline focus:outline-ink"
                       />
-                      <div className="flex items-center justify-end gap-1.5 pr-2">
-                        <button type="submit" name="riktning" value="upp" formAction={flyttaKorjournalpost} className="text-[12px] text-ink-faint hover:text-ink leading-none" title="Flytta upp">↑</button>
-                        <button type="submit" name="riktning" value="ner" formAction={flyttaKorjournalpost} className="text-[12px] text-ink-faint hover:text-ink leading-none" title="Flytta ner">↓</button>
-                        <button type="submit" formAction={bytBilForKorjournalpost} className="text-[10px] font-mono text-ink-faint hover:text-ink leading-none" title={`Flytta till ${valdBil === 'TMX76G' ? 'UDD408' : 'TMX76G'}`}>→{valdBil === 'TMX76G' ? 'UDD' : 'TMX'}</button>
-                        <button type="submit" className="text-[11px] text-ink-faint hover:text-ink" title="Spara ändringar">Spara</button>
-                        <button type="submit" formAction={raderaKorjournalpost} className="text-[11px] text-ink-faint hover:text-danger" title="Radera raden">×</button>
+                      <div className="flex items-center justify-end gap-0.5 pr-2">
+                        <button type="submit" name="riktning" value="upp" formAction={flyttaKorjournalpost} className="w-7 h-7 flex items-center justify-center text-[16px] text-ink-muted hover:text-ink hover:bg-bg-subtle rounded-sm leading-none" title="Flytta upp">↑</button>
+                        <button type="submit" name="riktning" value="ner" formAction={flyttaKorjournalpost} className="w-7 h-7 flex items-center justify-center text-[16px] text-ink-muted hover:text-ink hover:bg-bg-subtle rounded-sm leading-none" title="Flytta ner">↓</button>
+                        <span className="w-px h-5 bg-line mx-1" />
+                        <button type="submit" formAction={bytBilForKorjournalpost} className="px-2 h-7 text-[10px] font-mono text-ink-faint hover:text-ink hover:bg-bg-subtle rounded-sm" title={`Flytta till ${valdBil === 'TMX76G' ? 'UDD408' : 'TMX76G'}`}>→{valdBil === 'TMX76G' ? 'UDD' : 'TMX'}</button>
+                        <button type="submit" className="px-2 h-7 text-[11px] text-ink-faint hover:text-ink hover:bg-bg-subtle rounded-sm" title="Spara ändringar">Spara</button>
+                        <button type="submit" formAction={raderaKorjournalpost} className="w-7 h-7 flex items-center justify-center text-[14px] text-ink-faint hover:text-danger hover:bg-bg-subtle rounded-sm" title="Radera raden">×</button>
                       </div>
                     </form>
                   ))}
