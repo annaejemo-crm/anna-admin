@@ -24,6 +24,7 @@ export async function skapaTraktamentepost(formData: FormData) {
   const m_frukost = num(formData.get('maltider_frukost'));
   const m_lunch = num(formData.get('maltider_lunch'));
   const m_middag = num(formData.get('maltider_middag'));
+  const boende_betalat = formData.get('boende_betalat') === 'on';
   const anteckning = String(formData.get('anteckning') || '').trim();
 
   if (!avresa || !hemkomst || !destination) return;
@@ -33,6 +34,7 @@ export async function skapaTraktamentepost(formData: FormData) {
     maltider_frukost: m_frukost,
     maltider_lunch: m_lunch,
     maltider_middag: m_middag,
+    boende_betalat_av_annan: boende_betalat,
   });
 
   await supabase.from('traktamente_poster').insert({
@@ -80,6 +82,7 @@ export async function uppdateraTraktamentepost(formData: FormData) {
   const m_frukost = num(formData.get('maltider_frukost'), befintlig.maltider_frukost);
   const m_lunch = num(formData.get('maltider_lunch'), befintlig.maltider_lunch);
   const m_middag = num(formData.get('maltider_middag'), befintlig.maltider_middag);
+  const boende_betalat = formData.get('boende_betalat') === 'on';
   const anteckning = String(formData.get('anteckning') || '').trim();
 
   const r = beraknaTraktamente({
@@ -87,6 +90,7 @@ export async function uppdateraTraktamentepost(formData: FormData) {
     maltider_frukost: m_frukost,
     maltider_lunch: m_lunch,
     maltider_middag: m_middag,
+    boende_betalat_av_annan: boende_betalat,
   });
 
   await supabase.from('traktamente_poster').update({
