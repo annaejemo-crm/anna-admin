@@ -61,7 +61,9 @@ export default async function DashboardPage() {
     .order('datum', { ascending: false })
     .limit(30);
 
-  const pagaende = (pagaendeRaw || []) as any[];
+  const pagaende = ((pagaendeRaw || []) as any[]).filter(function(b: any) {
+    return harledBokningStatus(b) !== 'klar';
+  });
 
   /* Bildpaket-lista för inline-val på pågående-tabellen */
   const { data: paketLista } = await supabase
