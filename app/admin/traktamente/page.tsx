@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { skapaTraktamentepost, uppdateraTraktamentepost, raderaTraktamentepost } from './actions';
 import type { Traktamentepost } from '@/lib/traktamente';
+import Link from 'next/link';
 
 const MONTH_NAMES = ['januari', 'februari', 'mars', 'april', 'maj', 'juni', 'juli', 'augusti', 'september', 'oktober', 'november', 'december'];
 
@@ -10,11 +11,22 @@ function formatDate(d: string): string {
   return `${dt.getDate()} ${MONTH_NAMES[dt.getMonth()].slice(0, 3)}`;
 }
 
-export default async function TraktamentePage(props: { searchParams?: Promise<{ ar?: string }> }) {
+export default async function TraktamentePage(props: { searchParams?: Promise<{ ar?: string; edit?: string }> }) {
   const supabase = await createClient();
   const sp = props.searchParams ? await props.searchParams : {};
   const aktuelltAr = new Date().getFullYear();
   const valtAr = sp.ar ? parseInt(sp.ar, 10) : aktuelltAr;
+  const editingId = sp.edit || null;
+
+  let editingPost: Traktamentepost | null = null;
+  if (editingId) {
+    const { data: editData } = await supabase
+      .from('traktamente_poster')
+      .select('*')
+      .eq('id', editingId)
+      .maybeSingle();
+    editingPost = (editData || null) as Traktamentepost | null;
+  }
 
   const start = `${valtAr}-01-01`;
   const slut = `${valtAr}-12-31`;
@@ -39,6 +51,24 @@ export default async function TraktamentePage(props: { searchParams?: Promise<{ 
   const aretTotalt = poster.reduce((s, p) => s + (p.totalt_kr || 0), 0);
 
   const idagDatum = new Date().toISOString().slice(0, 10);
+
+  // Defaults för formuläret (Lägg till eller Redigera)
+  const formAction = editingPost ? uppdateraTraktamentepost : skapaTraktamentepost;
+  const formRubrik = editingPost ? 'Redigera resa' : 'Lägg till resa';
+  const sparaText = editingPost ? 'Uppdatera' : 'Spara';
+  const fAvresa = editingPost?.avresa || idagDatum;
+  const fHemkomst = editingPost?.hemkomst || idagDatum;
+  const fDestination = editingPost?.destination || '';
+  const fSyfte = editingPost?.syfte || 'Fotografering';
+  const fAvreseDel = editingPost ? (editingPost.antal_halvdagar === 2 ? 'halv' : 'hel') : 'hel';
+  const fHemkomstDel = editingPost ? (editingPost.antal_halvdagar >= 1 ? 'halv' : 'hel') : 'halv';
+  const fFrukost = editingPost?.maltider_frukost ?? 0;
+  const fLunch = editingPost?.maltider_lunch ?? 0;
+  const fMiddag = editingPost?.maltider_middag ?? 0;
+  const fAnteckning = editingPost?.anteckning || '';
+  const fBoende = editingPost
+    ? editingPost.antal_natter === 0 && editingPost.avresa !== editingPost.hemkomst
+    : false;
 
   return (
     <>
@@ -70,37 +100,45 @@ export default async function TraktamentePage(props: { searchParams?: Promise<{ 
         </div>
       </div>
 
-      {/* Lägg till ny resa */}
-      <section className="bg-white border border-line-soft rounded-sm p-5 mb-8">
-        <div className="eyebrow mb-3">Lägg till resa</div>
-        <form action={skapaTraktamentepost} className="space-y-3">
+      {/* Lägg till eller redigera resa */}
+      <section className={`bg-white border ${editingPost ? 'border-ink' : 'border-line-soft'} rounded-sm p-5 mb-8`}>
+        <div className="flex justify-between items-center mb-3">
+          <div className="eyebrow">{formRubrik}</div>
+          {editingPost && (
+            <Link href={`/admin/traktamente?ar=${valtAr}`} className="text-[12px] text-ink-muted hover:text-ink">
+              Avbryt redigering
+            </Link>
+          )}
+        </div>
+        <form action={formAction} className="space-y-3">
+          {editingPost && <input type="hidden" name="id" value={editingPost.id} />}
           <div className="grid grid-cols-[140px_140px_1.5fr_1fr_140px_140px] gap-2 items-end">
             <div>
               <label className="block text-[10px] uppercase tracking-wider text-ink-muted mb-1">Avresa</label>
-              <input type="date" name="avresa" required defaultValue={idagDatum} className="w-full px-2 py-2 border border-line-soft rounded-sm text-sm" />
+              <input type="date" name="avresa" required defaultValue={fAvresa} className="w-full px-2 py-2 border border-line-soft rounded-sm text-sm" />
             </div>
             <div>
               <label className="block text-[10px] uppercase tracking-wider text-ink-muted mb-1">Hemkomst</label>
-              <input type="date" name="hemkomst" required defaultValue={idagDatum} className="w-full px-2 py-2 border border-line-soft rounded-sm text-sm" />
+              <input type="date" name="hemkomst" required defaultValue={fHemkomst} className="w-full px-2 py-2 border border-line-soft rounded-sm text-sm" />
             </div>
             <div>
               <label className="block text-[10px] uppercase tracking-wider text-ink-muted mb-1">Destination</label>
-              <input type="text" name="destination" required placeholder="t.ex. Visby, Gotland" className="w-full px-2 py-2 border border-line-soft rounded-sm text-sm" />
+              <input type="text" name="destination" required placeholder="t.ex. Visby, Gotland" defaultValue={fDestination} className="w-full px-2 py-2 border border-line-soft rounded-sm text-sm" />
             </div>
             <div>
               <label className="block text-[10px] uppercase tracking-wider text-ink-muted mb-1">Syfte</label>
-              <input type="text" name="syfte" defaultValue="Fotografering" className="w-full px-2 py-2 border border-line-soft rounded-sm text-sm" />
+              <input type="text" name="syfte" defaultValue={fSyfte} className="w-full px-2 py-2 border border-line-soft rounded-sm text-sm" />
             </div>
             <div>
               <label className="block text-[10px] uppercase tracking-wider text-ink-muted mb-1" title="Hel: avresa före 12. Halv: efter 12.">Avresedag</label>
-              <select name="avreseDel" defaultValue="hel" className="w-full px-2 py-2 border border-line-soft rounded-sm text-sm bg-white">
+              <select name="avreseDel" defaultValue={fAvreseDel} className="w-full px-2 py-2 border border-line-soft rounded-sm text-sm bg-white">
                 <option value="hel">Hel (före 12)</option>
                 <option value="halv">Halv (efter 12)</option>
               </select>
             </div>
             <div>
               <label className="block text-[10px] uppercase tracking-wider text-ink-muted mb-1" title="Hel: hemkomst efter 19. Halv: före 19.">Hemkomstdag</label>
-              <select name="hemkomstDel" defaultValue="halv" className="w-full px-2 py-2 border border-line-soft rounded-sm text-sm bg-white">
+              <select name="hemkomstDel" defaultValue={fHemkomstDel} className="w-full px-2 py-2 border border-line-soft rounded-sm text-sm bg-white">
                 <option value="hel">Hel (efter 19)</option>
                 <option value="halv">Halv (före 19)</option>
               </select>
@@ -109,22 +147,26 @@ export default async function TraktamentePage(props: { searchParams?: Promise<{ 
           <div className="grid grid-cols-[100px_100px_100px_1fr_auto] gap-2 items-end">
             <div>
               <label className="block text-[10px] uppercase tracking-wider text-ink-muted mb-1" title="Antal frukostar som någon annan bjudit på under hela resan">Frukost</label>
-              <input type="number" name="maltider_frukost" min="0" defaultValue="0" className="w-full px-2 py-2 border border-line-soft rounded-sm text-sm" />
+              <input type="number" name="maltider_frukost" min="0" defaultValue={fFrukost} className="w-full px-2 py-2 border border-line-soft rounded-sm text-sm" />
             </div>
             <div>
               <label className="block text-[10px] uppercase tracking-wider text-ink-muted mb-1" title="Antal luncher som någon annan bjudit på under hela resan">Lunch</label>
-              <input type="number" name="maltider_lunch" min="0" defaultValue="0" className="w-full px-2 py-2 border border-line-soft rounded-sm text-sm" />
+              <input type="number" name="maltider_lunch" min="0" defaultValue={fLunch} className="w-full px-2 py-2 border border-line-soft rounded-sm text-sm" />
             </div>
             <div>
               <label className="block text-[10px] uppercase tracking-wider text-ink-muted mb-1" title="Antal middagar som någon annan bjudit på under hela resan">Middag</label>
-              <input type="number" name="maltider_middag" min="0" defaultValue="0" className="w-full px-2 py-2 border border-line-soft rounded-sm text-sm" />
+              <input type="number" name="maltider_middag" min="0" defaultValue={fMiddag} className="w-full px-2 py-2 border border-line-soft rounded-sm text-sm" />
             </div>
             <div>
               <label className="block text-[10px] uppercase tracking-wider text-ink-muted mb-1">Anteckning</label>
-              <input type="text" name="anteckning" placeholder="Valfritt" className="w-full px-2 py-2 border border-line-soft rounded-sm text-sm" />
+              <input type="text" name="anteckning" placeholder="Valfritt" defaultValue={fAnteckning} className="w-full px-2 py-2 border border-line-soft rounded-sm text-sm" />
             </div>
-            <button type="submit" className="px-4 py-2 bg-ink text-bg text-sm rounded-sm">Spara</button>
+            <button type="submit" className="px-4 py-2 bg-ink text-bg text-sm rounded-sm">{sparaText}</button>
           </div>
+          <label className="flex items-center gap-2 text-[13px] text-ink-muted pt-1">
+            <input type="checkbox" name="boende_betalat" defaultChecked={fBoende} className="w-4 h-4" />
+            <span>Boendet betalat av kund eller annan (ingen nattschablon dras)</span>
+          </label>
         </form>
       </section>
 
@@ -179,7 +221,8 @@ export default async function TraktamentePage(props: { searchParams?: Promise<{ 
                       <div className="px-3 py-3 text-right font-mono text-[12px]">{p.antal_halvdagar}</div>
                       <div className="px-3 py-3 text-right font-mono text-[12px]">{p.antal_natter}</div>
                       <div className="px-3 py-3 text-right font-mono text-[12.5px] font-medium">{Number(p.totalt_kr).toLocaleString('sv-SE')} kr</div>
-                      <div className="px-3 py-3 text-right">
+                      <div className="px-3 py-3 text-right flex gap-3 justify-end items-center">
+                        <Link href={`/admin/traktamente?ar=${valtAr}&edit=${p.id}`} title="Redigera" className="text-ink-faint hover:text-ink text-sm">✎</Link>
                         <form action={raderaTraktamentepost}>
                           <input type="hidden" name="id" value={p.id} />
                           <button type="submit" title="Ta bort" className="text-ink-faint hover:text-danger text-sm">×</button>
