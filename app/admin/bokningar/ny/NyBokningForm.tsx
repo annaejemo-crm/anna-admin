@@ -144,6 +144,20 @@ export function NyBokningForm(props: { kunder: KundOption[]; typer: { id: string
         </Row>
       </Section>
 
+      <Section title="Traktamente">
+        <label className="flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            name="innefattar_traktamente"
+            className="w-4 h-4 accent-ink mt-0.5"
+          />
+          <div className="text-sm">
+            <div>Innefattar traktamente (resa med övernattning &gt; 50 km från bostad och studio)</div>
+            <div className="text-[12px] text-ink-muted mt-0.5">När du sedan markerar bokningen som KLAR skapas en traktamenterad automatiskt under fliken Traktamente, där du fyller i resten.</div>
+          </div>
+        </label>
+      </Section>
+
       <Section title="Intern anteckning">
         <Field label="Intern anteckning (syns bara för dig)">
           <textarea name="intern_anteckning" rows={4} className={`${inputStyle} resize-y`} />
