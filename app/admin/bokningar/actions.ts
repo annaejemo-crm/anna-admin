@@ -345,6 +345,7 @@ export async function skapaBokning(formData: FormData) {
   const bokningsavgiftRaw = String(formData.get('bokningsavgift_kr') || '').replace(/\s/g, '').replace(',', '.');
   const bokningsavgift_kr = bokningsavgiftRaw ? Math.round(parseFloat(bokningsavgiftRaw)) : null;
   const bokningsavgift_betald = formData.get('bokningsavgift_betald') === 'on';
+  const innefattar_traktamente = formData.get('innefattar_traktamente') === 'on';
   const intern_anteckning = String(formData.get('intern_anteckning') || '') || null;
 
   // Plats kan vara vald från listan eller frihandstext
@@ -390,6 +391,7 @@ export async function skapaBokning(formData: FormData) {
     bokningsavgift_kr: bokningsavgift_kr,
     bokningsavgift_betald: bokningsavgift_betald,
     bildpaket_betald: false,
+    innefattar_traktamente: innefattar_traktamente,
     intern_anteckning: intern_anteckning,
   });
 
