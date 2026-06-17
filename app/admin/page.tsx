@@ -4,6 +4,7 @@ import type { DashboardSummary, BokningExpanderad } from '@/lib/types';
 import { harledBokningStatus, harledAvtalStatus } from '@/lib/types';
 import { AvtalPill } from '@/components/AvtalPill';
 import { gaVidare } from './bokningar/actions';
+import { setBildpaket, togglePaid } from './kunder/actions';
 import Link from 'next/link';
 
 const MONTH_NAMES = ['januari', 'februari', 'mars', 'april', 'maj', 'juni', 'juli', 'augusti', 'september', 'oktober', 'november', 'december'];
@@ -54,14 +55,20 @@ export default async function DashboardPage() {
   const idag = now.toISOString().slice(0, 10);
   const { data: pagaendeRaw } = await supabase
     .from('bokningar')
-    .select('id, datum, plats, kund_id, status, bildpaket_namn, bildpaket_kr, kundgalleri_skickat, kundgalleri_skickat_at, bokning_klar, kund:kunder(fornamn, efternamn, foretagsnamn), fotograferingstyp:fotograferingstyper(namn), avtal(status)')
+    .select('id, datum, plats, kund_id, status, bildpaket_namn, bildpaket_kr, bildpaket_betald, kundgalleri_skickat, kundgalleri_skickat_at, bokning_klar, kund:kunder(fornamn, efternamn, foretagsnamn), fotograferingstyp:fotograferingstyper(namn), avtal(status)')
     .lt('datum', idag)
     .eq('bokning_klar', false)
-    .is('bildpaket_kr', null)
     .order('datum', { ascending: false })
     .limit(30);
 
   const pagaende = (pagaendeRaw || []) as any[];
+
+  /* Bildpaket-lista för inline-val på pågående-tabellen */
+  const { data: paketLista } = await supabase
+    .from('bildpaket')
+    .select('id, namn, pris_kr')
+    .order('ordning');
+  const paket = (paketLista || []) as any[];
 
   function dagarSedan(datum: string | null): number {
     if (!datum) return 0;
@@ -130,13 +137,13 @@ export default async function DashboardPage() {
         <section className="mb-12">
           <h2 className="text-2xl font-serif mb-1">Status</h2>
           <p className="text-ink-muted text-[13px] mb-5">
-            Kunder som är pågående: fotade men väntar på att galleri ska skickas, eller har fått galleri men inte valt bildpaket än. Klicka in på kunden för att markera nästa steg.
+            Kunder som är pågående: fotade men väntar på galleri, paketval eller betalning. Klicka på status-pillet eller välj paket inline för att gå vidare.
           </p>
           <div className="bg-white border border-line-soft rounded-sm overflow-hidden">
             <table className="w-full">
               <thead>
                 <tr>
-                  <Th>Datum</Th><Th>Kund</Th><Th>Typ</Th><Th>Plats</Th><Th>Avtal</Th><Th>Status</Th><Th right>Dagar sedan</Th>
+                  <Th>Datum</Th><Th>Kund</Th><Th>Typ</Th><Th>Plats</Th><Th>Avtal</Th><Th>Status</Th><Th>Paket</Th><Th right>Dagar sedan</Th>
                 </tr>
               </thead>
               <tbody>
@@ -144,12 +151,14 @@ export default async function DashboardPage() {
                   const dgr = dagarSedan(b.datum);
                   const namn = b.kund?.foretagsnamn || `${b.kund?.fornamn || ''} ${b.kund?.efternamn || ''}`.trim();
                   const st = harledBokningStatus(b);
-                  const klickbar = st === 'vantar_galleri' || st === 'galleri_skickat';
+                  const klickbar = st === 'vantar_galleri' || st === 'galleri_skickat' || st === 'faktura_skickad';
                   const hjalp = st === 'vantar_galleri'
                     ? 'Klicka när du skickat galleriet'
                     : st === 'galleri_skickat'
-                      ? 'Klicka när allt är klart'
-                      : '';
+                      ? 'Välj paket i nästa kolumn'
+                      : st === 'faktura_skickad'
+                        ? 'Klicka när kunden betalat'
+                        : '';
                   return (
                     <tr key={b.id} className="border-b border-line-soft last:border-0 hover:bg-bg">
                       <Td className="font-mono text-[12px] text-ink-muted whitespace-nowrap">{formatDate(b.datum)}</Td>
@@ -160,7 +169,7 @@ export default async function DashboardPage() {
                       <Td>{b.plats || '–'}</Td>
                       <Td><AvtalPill status={harledAvtalStatus(b)} /></Td>
                       <Td>
-                        {klickbar ? (
+                        {klickbar && st !== 'faktura_skickad' ? (
                           <form action={gaVidare} className="inline">
                             <input type="hidden" name="id" value={b.id} />
                             <input type="hidden" name="kund_id" value={b.kund_id} />
@@ -168,8 +177,37 @@ export default async function DashboardPage() {
                               <StatusPill status={st} />
                             </button>
                           </form>
+                        ) : klickbar && st === 'faktura_skickad' ? (
+                          <form action={togglePaid} className="inline">
+                            <input type="hidden" name="id" value={b.id} />
+                            <input type="hidden" name="kind" value="paket" />
+                            <input type="hidden" name="kundId" value={b.kund_id} />
+                            <button type="submit" title={hjalp} className="cursor-pointer hover:opacity-70 transition-opacity">
+                              <StatusPill status={st} />
+                            </button>
+                          </form>
                         ) : (
                           <StatusPill status={st} />
+                        )}
+                      </Td>
+                      <Td>
+                        {b.bildpaket_namn && b.bildpaket_kr ? (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-[13px]">{b.bildpaket_namn}</span>
+                            <span className="text-[11px] text-ink-muted font-mono">{Number(b.bildpaket_kr).toLocaleString('sv-SE')} kr</span>
+                          </div>
+                        ) : (
+                          <form action={setBildpaket} className="flex gap-1.5 items-center">
+                            <input type="hidden" name="id" value={b.id} />
+                            <input type="hidden" name="kundId" value={b.kund_id} />
+                            <select name="paketId" defaultValue="" className="px-2 py-1 text-[12px] bg-white border border-line-soft rounded-sm">
+                              <option value="">Välj paket…</option>
+                              {paket.map(function(p: any) {
+                                return <option key={p.id} value={p.id}>{p.namn} ({Number(p.pris_kr).toLocaleString('sv-SE')} kr)</option>;
+                              })}
+                            </select>
+                            <button type="submit" className="text-[11px] px-2 py-1 bg-ink text-bg rounded-sm">Sätt</button>
+                          </form>
                         )}
                       </Td>
                       <Td right className={`font-mono text-[12.5px] ${dgr > 14 ? 'text-accent' : 'text-ink-muted'}`}>{dgr} dgr</Td>
