@@ -29,7 +29,7 @@ export async function togglePaid(formData: FormData) {
   if (kind === 'paket') {
     const { data } = await supabase
       .from('bokningar')
-      .select('bildpaket_betald')
+      .select('bildpaket_betald, innefattar_traktamente, datum, plats, kund_id')
       .eq('id', id)
       .maybeSingle();
     const current = data ? !!data.bildpaket_betald : false;
@@ -41,6 +41,46 @@ export async function togglePaid(formData: FormData) {
       bokning_klar: nyttVarde,
       bokning_klar_at: nyttVarde ? new Date().toISOString() : null,
     }).eq('id', id);
+
+    // Skapa traktamenterad automatiskt om bokningen innefattar traktamente
+    // och en sådan inte redan finns.
+    if (nyttVarde && data?.innefattar_traktamente) {
+      const { data: existerande } = await supabase
+        .from('traktamente_poster')
+        .select('id')
+        .eq('bokning_id', id)
+        .maybeSingle();
+      if (!existerande) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user && data.datum) {
+          await supabase.from('traktamente_poster').insert({
+            user_id: user.id,
+            bokning_id: id,
+            avresa: data.datum,
+            hemkomst: data.datum,
+            destination: data.plats || 'Att fylla i',
+            syfte: 'Fotografering',
+            antal_heldagar: 1,
+            antal_halvdagar: 0,
+            antal_natter: 0,
+            maltider_frukost: 0,
+            maltider_lunch: 0,
+            maltider_middag: 0,
+            belopp_heldag: 290,
+            belopp_halvdag: 145,
+            belopp_natt: 145,
+            avdrag_frukost: 29,
+            avdrag_lunch: 87,
+            avdrag_middag: 87,
+            brutto_kr: 290,
+            maltidsavdrag_kr: 0,
+            totalt_kr: 290,
+            anteckning: 'Automatiskt skapad från bokning. Justera datum, måltider och boende.',
+          });
+          revalidatePath('/admin/traktamente');
+        }
+      }
+    }
   } else {
     // avgift: 3-läges cykel
     const { data } = await supabase
