@@ -11,6 +11,7 @@ export type StatusKod =
   | 'vantar_galleri'
   | 'galleri_skickat'
   | 'paket_att_valja'
+  | 'faktura_skickad'
   | 'levererat'
   | 'betald'
   | 'klar'
@@ -25,6 +26,7 @@ export const STATUS_LABELS: Record<StatusKod, string> = {
   vantar_galleri: 'Väntar på galleri',
   galleri_skickat: 'Galleri skickat',
   paket_att_valja: 'Paket att välja',
+  faktura_skickad: 'Faktura skickad',
   levererat: 'Levererat',
   betald: 'Betald',
   klar: 'Klar',
@@ -58,7 +60,8 @@ export function harledBokningStatus(b: any): StatusKod {
   if (!b) return 'bokad';
   if (b.status === 'avbokad') return 'avbokad';
   if (b.bokning_klar) return 'klar';
-  if (b.bildpaket_namn && b.bildpaket_kr) return 'klar';
+  if (b.bildpaket_betald) return 'klar';
+  if (b.bildpaket_namn && b.bildpaket_kr) return 'faktura_skickad';
   if (b.kundgalleri_skickat) return 'galleri_skickat';
   const idag = new Date().toISOString().slice(0, 10);
   if (b.datum && b.datum < idag) return 'vantar_galleri';
