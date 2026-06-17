@@ -33,7 +33,14 @@ export async function togglePaid(formData: FormData) {
       .eq('id', id)
       .maybeSingle();
     const current = data ? !!data.bildpaket_betald : false;
-    await supabase.from('bokningar').update({ bildpaket_betald: !current }).eq('id', id);
+    const nyttVarde = !current;
+    // När bildpaket markeras betald: bokningen är klar.
+    // När betald-markering tas bort: bokningen är inte längre klar.
+    await supabase.from('bokningar').update({
+      bildpaket_betald: nyttVarde,
+      bokning_klar: nyttVarde,
+      bokning_klar_at: nyttVarde ? new Date().toISOString() : null,
+    }).eq('id', id);
   } else {
     // avgift: 3-läges cykel
     const { data } = await supabase
@@ -89,6 +96,7 @@ export async function togglePaid(formData: FormData) {
     }
   }
 
+  revalidatePath('/admin');
   revalidatePath('/admin/kunder');
   const kundId = String(formData.get('kundId') || '');
   if (kundId) revalidatePath('/admin/kunder/' + kundId);
@@ -118,6 +126,7 @@ export async function setBildpaket(formData: FormData) {
       }).eq('id', id);
     }
   }
+  revalidatePath('/admin');
   revalidatePath('/admin/kunder');
   const kundId = String(formData.get('kundId') || '');
   if (kundId) revalidatePath('/admin/kunder/' + kundId);
