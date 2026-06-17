@@ -21,6 +21,7 @@ const NAV = [
       { href: '/admin/avtal', label: 'Avtal & signering' },
       { href: '/admin/ekonomi', label: 'Ekonomi' },
       { href: '/admin/korjournal', label: 'Körjournal' },
+      { href: '/admin/traktamente', label: 'Traktamente' },
     ],
   },
   {
@@ -77,7 +78,8 @@ export function Sidebar() {
       <form action={logout} className="mt-auto pt-6 border-t border-line">
         <button
           type="submit"
-          className="font-mono text-[10px] tracking-[0.18em] uppercase text-ink-faint hover:text-ink">
+          className="font-mono text-[10px] tracking-[0.18em] uppercase text-ink-faint hover:text-ink"
+        >
           Logga ut
         </button>
       </form>
