@@ -112,6 +112,13 @@ export default async function TraktamentePage(props: { searchParams?: Promise<{ 
         </div>
         <form action={formAction} className="space-y-3">
           {editingPost && <input type="hidden" name="id" value={editingPost.id} />}
+
+          <div className="bg-bg-subtle border border-line-soft rounded-sm p-3 text-[12.5px] text-ink-muted space-y-1.5">
+            <div><strong className="text-ink">Schablonen täcker dina egna kostnader.</strong> Heldag 290 kr, halvdag 145 kr. Du behöver inte rapportera vad du själv betalat för mat eller småttis.</div>
+            <div><strong className="text-ink">Frukost, lunch, middag nedan:</strong> ange bara antal som NÅGON ANNAN bjudit på (kund som bjuder, hotellfrukost, etc). Lämna 0 om du betalade allt själv.</div>
+            <div><strong className="text-ink">Boendet:</strong> bocka rutan längst ner om kunden betalt hotellet ELLER om ditt AB tar hotellkvittot som kostnad. Då dras nattschablonen 145 kr bort.</div>
+          </div>
+
           <div className="grid grid-cols-[140px_140px_1.5fr_1fr_140px_140px] gap-2 items-end">
             <div>
               <label className="block text-[10px] uppercase tracking-wider text-ink-muted mb-1">Avresa</label>
