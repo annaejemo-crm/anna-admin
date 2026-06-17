@@ -121,8 +121,8 @@ export default async function TraktamentePage(props: { searchParams?: Promise<{ 
 
           <div className="bg-bg-subtle border border-line-soft rounded-sm p-3 text-[12.5px] text-ink-muted space-y-1.5">
             <div><strong className="text-ink">Schablonen täcker dina egna kostnader.</strong> Heldag 290 kr, halvdag 145 kr. Du behöver inte rapportera vad du själv betalat för mat eller småttis.</div>
-            <div><strong className="text-ink">Frukost, lunch, middag nedan:</strong> ange bara antal som NÅGON ANNAN bjudit på (kund som bjuder, hotellfrukost, etc). Lämna 0 om du betalade allt själv.</div>
-            <div><strong className="text-ink">Boendet:</strong> bocka rutan längst ner om kunden betalt hotellet ELLER om ditt AB tar hotellkvittot som kostnad. Då dras nattschablonen 145 kr bort.</div>
+            <div><strong className="text-ink">Frukost, lunch, middag nedan:</strong> ange bara antal måltider som NÅGON ANNAN bjöd på (kund som bjuder lunch, hotellfrukost ingår i boende, etc). Lämna 0 om du själv betalade måltiden, oavsett om du betalade kontant eller via AB-kort.</div>
+            <div><strong className="text-ink">Boendet:</strong> bocka rutan längst ner om kunden betalt hotellet ELLER om Fotograf Anna Ejemo AB betalt hotellet (med kvitto i bokföringen). Då dras nattschablonen 145 kr bort så du inte får dubbel ersättning.</div>
           </div>
 
           <div className="grid grid-cols-[140px_140px_1.5fr_1fr_140px_140px] gap-2 items-end">
@@ -178,7 +178,7 @@ export default async function TraktamentePage(props: { searchParams?: Promise<{ 
           </div>
           <label className="flex items-center gap-2 text-[13px] text-ink-muted pt-1">
             <input type="checkbox" name="boende_betalat" defaultChecked={fBoende} className="w-4 h-4" />
-            <span>Boendet betalat av kund eller annan (ingen nattschablon dras)</span>
+            <span>Boendet betalat av kund eller Fotograf Anna Ejemo AB (då ingen nattschablon)</span>
           </label>
         </form>
       </section>
