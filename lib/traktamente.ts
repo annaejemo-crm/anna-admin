@@ -24,6 +24,7 @@ export type TraktamenteIndata = {
   maltider_frukost: number;
   maltider_lunch: number;
   maltider_middag: number;
+  boende_betalat_av_annan?: boolean; // om true: ingen nattschablon
 };
 
 export type TraktamenteResultat = {
@@ -50,7 +51,8 @@ export function beraknaTraktamente(input: TraktamenteIndata): TraktamenteResulta
     1,
     Math.floor((hemkomst.getTime() - avresa.getTime()) / 86400000) + 1,
   );
-  const natter = Math.max(0, dagarTotalt - 1);
+  const natterBerakn = Math.max(0, dagarTotalt - 1);
+  const natter = input.boende_betalat_av_annan ? 0 : natterBerakn;
 
   let heldagar = 0;
   let halvdagar = 0;
