@@ -9,6 +9,7 @@ const COLOR: Record<StatusKod, string> = {
   vantar_galleri: 'text-danger',
   galleri_skickat: 'text-warn',
   paket_att_valja: 'text-warn',
+  faktura_skickad: 'text-warn',
   levererat: 'text-positive',
   betald: 'text-positive',
   klar: 'text-positive',
