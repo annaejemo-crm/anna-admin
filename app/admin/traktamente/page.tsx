@@ -81,6 +81,12 @@ export default async function TraktamentePage(props: { searchParams?: Promise<{ 
               Skattefria traktamenten enligt Skatteverkets schablon (290 kr heldag, 145 kr halvdag, 145 kr per natt). Måltidsavdrag dras automatiskt. Skicka filen till revisorn i slutet av månaden eller kvartalet.
             </p>
           </div>
+          <a
+            href={`/admin/traktamente/export?ar=${valtAr}`}
+            className="text-sm px-4 py-2 border border-line-soft rounded-sm hover:border-ink transition-colors"
+          >
+            Exportera till Excel
+          </a>
         </div>
       </div>
 
