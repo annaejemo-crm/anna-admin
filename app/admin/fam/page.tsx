@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
 import {
   uppdateraKonferens,
-  skapaTalare, raderaTalare,
+  skapaTalare, raderaTalare, togglaTalareCheck, uppdateraTalareArvode, uppdateraTalareKontakt,
   skapaDeltagare, raderaDeltagare, togglaBetaldDeltagare,
   skapaSponsor, raderaSponsor,
   skapaUppgift, togglaUppgift, raderaUppgift,
@@ -252,35 +252,91 @@ function Talare(props: { valtAr: number; talare: any[] }) {
       {talare.length === 0 ? (
         <Tom text="Inga talare ännu" />
       ) : (
-        <div className="bg-white border border-line-soft rounded-sm overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-bg-subtle text-left">
-              <tr>
-                <Th>Namn</Th><Th>Föreläsning</Th><Th>Hemsida</Th><Th>Kontakt</Th><Th>Arvode</Th><Th>Status</Th><Th />
-              </tr>
-            </thead>
-            <tbody>
-              {talare.map((t: any) => (
-                <tr key={t.id} className="border-t border-line-soft hover:bg-bg/40">
-                  <Td><div className="font-medium">{t.namn}</div>{t.amne && <div className="text-[12px] text-ink-muted">{t.amne}</div>}</Td>
-                  <Td>{t.forelasning_titel || '—'}</Td>
-                  <Td>{t.hemsida ? <a href={t.hemsida.startsWith('http') ? t.hemsida : `https://${t.hemsida}`} target="_blank" rel="noreferrer" className="text-accent hover:underline">{t.hemsida}</a> : '—'}</Td>
-                  <Td><div className="text-[12.5px] font-mono">{t.email || '—'}</div>{t.telefon && <div className="text-[11px] text-ink-muted font-mono">{t.telefon}</div>}</Td>
-                  <Td>{t.arvode ? `${t.arvode.toLocaleString('sv-SE')} kr` : '—'}</Td>
-                  <Td><span className="text-[12px] font-medium">{STATUS_LABEL[t.status] || t.status}</span></Td>
-                  <Td>
-                    <form action={raderaTalare}>
-                      <input type="hidden" name="id" value={t.id} />
-                      <button type="submit" className="text-ink-faint hover:text-danger text-sm">×</button>
-                    </form>
-                  </Td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="grid grid-cols-2 gap-4">
+          {talare.map((t: any) => <TalareKort key={t.id} t={t} />)}
         </div>
       )}
     </div>
+  );
+}
+
+function TalareKort({ t }: { t: any }) {
+  const klart = (t.utkast_skickat ? 1 : 0) + (t.presentation_skickad ? 1 : 0) + (t.fakturerad ? 1 : 0);
+  return (
+    <div className="bg-white border border-line-soft rounded-sm p-5">
+      <div className="flex justify-between items-start mb-3">
+        <div>
+          <div className="font-serif text-[20px] leading-tight">{t.namn}</div>
+          {t.forelasning_titel && <div className="text-[13px] text-ink-muted mt-1">{t.forelasning_titel}</div>}
+        </div>
+        <form action={raderaTalare}>
+          <input type="hidden" name="id" value={t.id} />
+          <button type="submit" className="text-ink-faint hover:text-danger text-sm">×</button>
+        </form>
+      </div>
+
+      {t.amne && <p className="text-[12.5px] text-ink-muted mb-4 leading-relaxed">{t.amne}</p>}
+
+      <div className="grid grid-cols-2 gap-3 mb-4 text-[12px]">
+        <div>
+          <div className="text-[10px] uppercase tracking-wider text-ink-faint mb-0.5">Hemsida</div>
+          {t.hemsida ? <a href={t.hemsida.startsWith('http') ? t.hemsida : `https://${t.hemsida}`} target="_blank" rel="noreferrer" className="text-accent hover:underline font-mono text-[12px]">{t.hemsida}</a> : <span className="text-ink-faint">tom</span>}
+        </div>
+        <div>
+          <div className="text-[10px] uppercase tracking-wider text-ink-faint mb-0.5">Status</div>
+          <span className="font-medium">{STATUS_LABEL[t.status] || t.status}</span>
+        </div>
+      </div>
+
+      <form action={uppdateraTalareKontakt} className="grid grid-cols-2 gap-2 mb-3">
+        <input type="hidden" name="id" value={t.id} />
+        <div>
+          <div className="text-[10px] uppercase tracking-wider text-ink-faint mb-0.5">Email</div>
+          <input type="email" name="email" defaultValue={t.email || ''} placeholder="namn@email.se" className={iSty + ' text-[12px]'} />
+        </div>
+        <div>
+          <div className="text-[10px] uppercase tracking-wider text-ink-faint mb-0.5">Telefon</div>
+          <input type="text" name="telefon" defaultValue={t.telefon || ''} placeholder="070..." className={iSty + ' text-[12px]'} />
+        </div>
+        <div className="col-span-2 flex justify-end">
+          <button type="submit" className="text-[11px] px-2 py-1 text-ink-muted hover:text-ink border border-line-soft rounded-sm">Spara kontakt</button>
+        </div>
+      </form>
+
+      <form action={uppdateraTalareArvode} className="flex items-end gap-2 mb-4">
+        <input type="hidden" name="id" value={t.id} />
+        <div className="flex-1">
+          <div className="text-[10px] uppercase tracking-wider text-ink-faint mb-0.5">Arvode (kr ex moms)</div>
+          <input type="number" name="arvode" defaultValue={t.arvode || ''} placeholder="2500" className={iSty + ' text-[12px]'} />
+        </div>
+        <button type="submit" className="text-[11px] px-2 py-1.5 text-ink-muted hover:text-ink border border-line-soft rounded-sm">Spara</button>
+      </form>
+
+      <div className="border-t border-line-soft pt-3">
+        <div className="flex justify-between items-center mb-2">
+          <div className="eyebrow text-[10px]">Förberedelse</div>
+          <div className="text-[11px] font-mono text-ink-faint">{klart} / 3</div>
+        </div>
+        <div className="space-y-1.5">
+          <TalareBock id={t.id} field="utkast_skickat" checked={!!t.utkast_skickat} label="Skicka in utkast av presentation" />
+          <TalareBock id={t.id} field="presentation_skickad" checked={!!t.presentation_skickad} label="Skicka in presentationen" />
+          <TalareBock id={t.id} field="fakturerad" checked={!!t.fakturerad} label={`Fakturera mig${t.arvode ? ` ${t.arvode.toLocaleString('sv-SE')} kr ex moms` : ''}`} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TalareBock({ id, field, checked, label }: { id: string; field: string; checked: boolean; label: string }) {
+  return (
+    <form action={togglaTalareCheck} className="flex items-center gap-2">
+      <input type="hidden" name="id" value={id} />
+      <input type="hidden" name="field" value={field} />
+      <button type="submit" className={`w-4 h-4 border-2 rounded-sm flex items-center justify-center text-[10px] ${checked ? 'bg-ink border-ink text-bg' : 'border-line bg-white'}`}>
+        {checked ? '✓' : ''}
+      </button>
+      <span className={`text-[12.5px] ${checked ? 'line-through text-ink-faint' : 'text-ink'}`}>{label}</span>
+    </form>
   );
 }
 
