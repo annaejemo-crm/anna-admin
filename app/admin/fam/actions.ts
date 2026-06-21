@@ -101,6 +101,37 @@ export async function raderaTalare(formData: FormData) {
   revalidatePath('/admin/fam');
 }
 
+export async function togglaTalareCheck(formData: FormData) {
+  const id = String(formData.get('id') || '');
+  const field = String(formData.get('field') || '');
+  const tillaten = ['utkast_skickat', 'presentation_skickad', 'fakturerad'];
+  if (!id || !tillaten.includes(field)) return;
+  const supabase = await createClient();
+  const { data } = await supabase.from('fam_talare').select(field).eq('id', id).maybeSingle();
+  if (!data) return;
+  await supabase.from('fam_talare').update({ [field]: !(data as any)[field] }).eq('id', id);
+  revalidatePath('/admin/fam');
+}
+
+export async function uppdateraTalareArvode(formData: FormData) {
+  const id = String(formData.get('id') || '');
+  if (!id) return;
+  const supabase = await createClient();
+  await supabase.from('fam_talare').update({ arvode: num(formData.get('arvode')) }).eq('id', id);
+  revalidatePath('/admin/fam');
+}
+
+export async function uppdateraTalareKontakt(formData: FormData) {
+  const id = String(formData.get('id') || '');
+  if (!id) return;
+  const supabase = await createClient();
+  await supabase.from('fam_talare').update({
+    email: String(formData.get('email') || '') || null,
+    telefon: String(formData.get('telefon') || '') || null,
+  }).eq('id', id);
+  revalidatePath('/admin/fam');
+}
+
 /* ============ DELTAGARE ============ */
 
 export async function skapaDeltagare(formData: FormData) {
