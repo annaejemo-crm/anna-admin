@@ -43,7 +43,7 @@ export default async function NyttAvtalPage(props: { params: Promise<{ id: strin
     .select('id, namn, klausuler')
     .order('ordning');
 
-  const valdMall: any = mallar && mallar.length > 0 ? mallar[0] : null;
+  const valdMall: any = (mallar && mallar.find(function(m: any) { return m.namn === 'Familjefotografering' || m.namn === 'Gravidfotografering'; })) || (mallar && mallar.length > 0 ? mallar[0] : null);
   const startKlausuler: any[] = valdMall && Array.isArray(valdMall.klausuler) && valdMall.klausuler.length > 0
     ? valdMall.klausuler
     : STANDARD_KLAUSULER;
