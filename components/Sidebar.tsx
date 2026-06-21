@@ -32,6 +32,12 @@ const NAV = [
       { href: '/admin/installningar', label: 'Inställningar' },
     ],
   },
+  {
+    title: 'FAM',
+    items: [
+      { href: '/admin/fam', label: 'FAM konferens' },
+    ],
+  },
 ];
 
 export function Sidebar() {
