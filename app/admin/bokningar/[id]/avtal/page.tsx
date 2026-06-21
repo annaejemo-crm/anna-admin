@@ -32,7 +32,7 @@ export default async function NyttAvtalPage(props: { params: Promise<{ id: strin
 
   const { data: bokning } = await supabase
     .from('bokningar')
-    .select('*, kund:kunder(id, fornamn, efternamn, foretagsnamn, email), fotograferingstyp:fotograferingstyper(namn)')
+    .select('*, kund:kunder(id, fornamn, efternamn, foretagsnamn, email, telefon), fotograferingstyp:fotograferingstyper(namn)')
     .eq('id', params.id)
     .single();
 
@@ -112,6 +112,19 @@ export default async function NyttAvtalPage(props: { params: Promise<{ id: strin
           </p>
           <div className="space-y-5">
             {startKlausuler.map(function(kl: any, i: number) {
+              const ersatt = (s: string) => (s || '')
+                .replace(/\{\{KUND_NAMN\}\}/g, kundNamn)
+                .replace(/\{\{KUND_TELEFON\}\}/g, (k as any).telefon || '')
+                .replace(/\{\{KUND_EMAIL\}\}/g, k.email || '')
+                .replace(/\{\{DATUM\}\}/g, bokning.datum || '')
+                .replace(/\{\{TID\}\}/g, bokning.tid || '')
+                .replace(/\{\{PLATS\}\}/g, bokning.plats || '')
+                .replace(/\{\{PAKET_OCH_PRIS\}\}/g, bokning.bildpaket_namn ? `${bokning.bildpaket_namn}${bokning.bildpaket_kr ? ' — ' + bokning.bildpaket_kr.toLocaleString('sv-SE') + ' kr' : ''}` : 'Väljs efter fotograferingen')
+                .replace(/\{\{TOTAL_KOSTNAD\}\}/g, (() => { const tot = (bokning.bokningsavgift_kr || 0) + (bokning.bildpaket_kr || 0); return tot > 0 ? tot.toLocaleString('sv-SE') + ' kr' : ''; })())
+                .replace(/\{\{BOKNINGSAVGIFT\}\}/g, bokning.bokningsavgift_kr ? bokning.bokningsavgift_kr.toLocaleString('sv-SE') + ' kr' : '')
+                .replace(/\{\{TILLVAL\}\}/g, '—')
+                .replace(/\{\{GRAVIDITETSVECKA\}\}/g, '—')
+                .replace(/\{\{ANTAL_TIMMAR\}\}/g, '1 timme');
               return (
                 <div key={i} className="border-l-2 border-line-soft pl-5">
                   <input
@@ -123,8 +136,8 @@ export default async function NyttAvtalPage(props: { params: Promise<{ id: strin
                   />
                   <textarea
                     name="klausul_brod"
-                    defaultValue={kl.brodtext || ''}
-                    rows={3}
+                    defaultValue={ersatt(kl.brodtext || '')}
+                    rows={4}
                     placeholder="Brödtext"
                     className="w-full px-3 py-2 bg-white border border-line-soft rounded-sm text-sm focus:outline-none focus:border-ink resize-y"
                   />
