@@ -26,9 +26,8 @@ const STANDARD_KLAUSULER: { titel: string; brodtext: string }[] = [
   },
 ];
 
-export default async function NyttAvtalPage(props: { params: Promise<{ id: string }>; searchParams?: Promise<{ mall?: string }> }) {
+export default async function NyttAvtalPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const sp = props.searchParams ? await props.searchParams : {};
   const supabase = await createClient();
 
   const { data: bokning } = await supabase
@@ -41,28 +40,10 @@ export default async function NyttAvtalPage(props: { params: Promise<{ id: strin
 
   const { data: mallar } = await supabase
     .from('avtal_mallar')
-    .select('id, namn, klausuler, fotograferingstyp')
-    .eq('aktiv', true)
+    .select('id, namn, klausuler')
     .order('ordning');
 
-  const mallista: any[] = (mallar || []) as any[];
-
-  // Välj mall: 1) URL-param, 2) matcha bokningens fotograferingstyp, 3) första mallen
-  let valdMall: any = null;
-  if (sp.mall) {
-    valdMall = mallista.find(function(m: any) { return m.id === sp.mall; }) || null;
-  }
-  if (!valdMall && bokning.fotograferingstyp && (bokning.fotograferingstyp as any).namn) {
-    const typNamn = ((bokning.fotograferingstyp as any).namn || '').toLowerCase();
-    valdMall = mallista.find(function(m: any) {
-      const mt = (m.fotograferingstyp || '').toLowerCase();
-      return mt && (typNamn.includes(mt) || mt.includes(typNamn));
-    }) || null;
-  }
-  if (!valdMall && mallista.length > 0) {
-    valdMall = mallista[0];
-  }
-
+  const valdMall: any = mallar && mallar.length > 0 ? mallar[0] : null;
   const startKlausuler: any[] = valdMall && Array.isArray(valdMall.klausuler) && valdMall.klausuler.length > 0
     ? valdMall.klausuler
     : STANDARD_KLAUSULER;
@@ -79,26 +60,6 @@ export default async function NyttAvtalPage(props: { params: Promise<{ id: strin
         </div>
         <h1 className="font-serif text-[42px] font-light leading-tight">Nytt avtal</h1>
       </div>
-
-      {mallista.length > 1 && (
-        <div className="bg-white border border-line-soft rounded-sm p-5 mb-6 max-w-3xl">
-          <div className="eyebrow mb-3">Välj avtalsmall</div>
-          <div className="flex gap-2 flex-wrap">
-            {mallista.map(function(m: any) {
-              const aktiv = valdMall && valdMall.id === m.id;
-              return (
-                <Link
-                  key={m.id}
-                  href={`/admin/bokningar/${bokning.id}/avtal?mall=${m.id}`}
-                  className={`px-3 py-1.5 text-sm rounded-sm transition-colors ${aktiv ? 'bg-ink text-bg' : 'bg-white border border-line-soft text-ink hover:border-ink'}`}
-                >
-                  {m.namn}
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       <form action={skapaAvtal} className="space-y-8 max-w-3xl">
         <input type="hidden" name="bokning_id" value={bokning.id} />
