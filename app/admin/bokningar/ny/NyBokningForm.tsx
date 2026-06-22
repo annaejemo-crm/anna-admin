@@ -128,6 +128,18 @@ export function NyBokningForm(props: { kunder: KundOption[]; typer: { id: string
             </select>
           </Field>
         </Row>
+        <Field label="Var kom bokningen ifrån (källa)">
+          <select name="kalla" defaultValue="" className={inputStyle}>
+            <option value="">Välj källa</option>
+            <option value="Instagram">Instagram</option>
+            <option value="Google">Google</option>
+            <option value="Rekommendation">Rekommendation</option>
+            <option value="Återkommande kund">Återkommande kund</option>
+            <option value="Mässa">Mässa</option>
+            <option value="Hemsida">Hemsida</option>
+            <option value="Annat">Annat</option>
+          </select>
+        </Field>
       </Section>
 
       <Section title="Bokningsavgift">
