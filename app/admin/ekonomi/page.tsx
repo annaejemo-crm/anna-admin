@@ -10,6 +10,7 @@ type BokningRow = {
   bildpaket_betald: boolean | null;
   status: string;
   fotograferingstyp_id: string | null;
+  kalla: string | null;
 };
 
 type TypRow = { id: string; namn: string };
@@ -47,7 +48,7 @@ export default async function EkonomiPage(props: { searchParams?: Promise<{ ar?:
 
   const { data: bokningarRaw } = await supabase
     .from('bokningar')
-    .select('id, kund_id, datum, bokningsavgift_kr, bildpaket_kr, bokningsavgift_betald, bildpaket_betald, status, fotograferingstyp_id');
+    .select('id, kund_id, datum, bokningsavgift_kr, bildpaket_kr, bokningsavgift_betald, bildpaket_betald, status, fotograferingstyp_id, kalla');
   const { data: typerRaw } = await supabase
     .from('fotograferingstyper')
     .select('id, namn');
@@ -131,6 +132,32 @@ export default async function EkonomiPage(props: { searchParams?: Promise<{ ar?:
 
   const snitt = valtStat.count > 0 ? Math.round(valtStat.total / valtStat.count) : 0;
 
+  // Källfördelning för valt år
+  const kallaStats: Record<string, number> = {};
+  let kallaUtanVarde = 0;
+  for (let i = 0; i < bokningar.length; i++) {
+    const b = bokningar[i];
+    if (!b.datum) continue;
+    if (b.status === 'avbokad') continue;
+    const d = new Date(b.datum);
+    if (d.getFullYear() !== valtAr) continue;
+    if (b.kalla) {
+      if (!kallaStats[b.kalla]) kallaStats[b.kalla] = 0;
+      kallaStats[b.kalla] += 1;
+    } else {
+      kallaUtanVarde += 1;
+    }
+  }
+  const kallaArr: { namn: string; count: number; andel: number }[] = [];
+  const kallaTotal = Object.values(kallaStats).reduce(function(s, n) { return s + n; }, 0);
+  const kallaNycklar = Object.keys(kallaStats);
+  for (let i = 0; i < kallaNycklar.length; i++) {
+    const namn = kallaNycklar[i];
+    const c = kallaStats[namn];
+    kallaArr.push({ namn: namn, count: c, andel: kallaTotal > 0 ? Math.round((c / kallaTotal) * 100) : 0 });
+  }
+  kallaArr.sort(function(a, b) { return b.count - a.count; });
+
   const manadTyp: Record<number, Record<string, number>> = {};
   for (let m = 0; m < 12; m++) manadTyp[m] = {};
   for (let i = 0; i < bokningar.length; i++) {
@@ -192,6 +219,35 @@ export default async function EkonomiPage(props: { searchParams?: Promise<{ ar?:
           <div className="text-[11px] text-ink-muted">Bokad omsättning och inkommit i kronor</div>
         </div>
         <MonthRevenueChart manader={valtStat.manader} />
+      </div>
+
+      <div className="mb-12">
+        <div className="flex justify-between items-end mb-4">
+          <div className="eyebrow">Var bokningarna kom ifrån {valtAr}</div>
+          <div className="text-[11px] text-ink-muted">{kallaTotal} bokningar med källa · {kallaUtanVarde} utan</div>
+        </div>
+        <div className="bg-white border border-line-soft rounded-sm p-6">
+          {kallaArr.length === 0 ? (
+            <div className="text-center text-ink-muted text-sm py-4">Ingen källa ifylld för {valtAr} ännu. Fyll i källa när du skapar nya bokningar.</div>
+          ) : (
+            <div className="space-y-3">
+              {kallaArr.map(function(k) {
+                return (
+                  <div key={k.namn} className="grid grid-cols-[180px_1fr_80px] gap-4 items-center">
+                    <div className="text-sm font-medium">{k.namn}</div>
+                    <div className="h-6 bg-bg-subtle rounded-sm overflow-hidden">
+                      <div className="h-full bg-accent/70" style={{ width: `${k.andel}%` }} />
+                    </div>
+                    <div className="text-right tabular-nums text-sm">
+                      <span className="font-medium">{k.count} st</span>
+                      <span className="text-ink-muted ml-1.5">({k.andel}%)</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="mb-12">
@@ -371,7 +427,7 @@ function CompareChart(props: { stat2024: ArStat; stat2025: ArStat; stat2026: ArS
             </div>
           );
         })}
-      </div>
+      </div></div>
     </div>
   );
 }
@@ -439,5 +495,4 @@ function Legend(props: { color: string; label: string }) {
       <div className={`w-3 h-3 rounded-sm ${props.color}`} />
       <span className="text-ink-muted">{props.label}</span>
     </div>
-  );
-}
+ 
