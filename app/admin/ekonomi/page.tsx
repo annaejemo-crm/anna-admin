@@ -495,4 +495,5 @@ function Legend(props: { color: string; label: string }) {
       <div className={`w-3 h-3 rounded-sm ${props.color}`} />
       <span className="text-ink-muted">{props.label}</span>
     </div>
- 
+  );
+}
