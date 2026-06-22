@@ -9,6 +9,9 @@ const MILERSATTNING_KR_PER_MIL = 25;
 const MONTH_NAMES = ['januari', 'februari', 'mars', 'april', 'maj', 'juni', 'juli', 'augusti', 'september', 'oktober', 'november', 'december'];
 
 export default async function KorjournalPage(props: { searchParams?: Promise<{ ar?: string; bil?: string }> }) {
+  // Auto-synka: dra in alla passerade bokningar i körjournalen vid sidladdning
+  await synkaKorjournalFranBokningar();
+
   const supabase = await createClient();
   const sp = props.searchParams ? await props.searchParams : {};
   const aktuelltAr = new Date().getFullYear();
