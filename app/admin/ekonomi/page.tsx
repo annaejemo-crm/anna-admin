@@ -427,7 +427,7 @@ function CompareChart(props: { stat2024: ArStat; stat2025: ArStat; stat2026: ArS
             </div>
           );
         })}
-      </div></div>
+      </div>
     </div>
   );
 }
