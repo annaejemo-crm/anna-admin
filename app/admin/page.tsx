@@ -257,7 +257,7 @@ function Kpi({ label, value, sub }: { label: string; value: string; sub: string 
   );
 }
 
-function Th({ children, right }: { children: React.ReactNode; right?: boolean }) {
+function Th({ children, right }: { children?: React.ReactNode; right?: boolean }) {
   return (
     <th className={`font-mono text-[10px] tracking-[0.16em] uppercase text-ink-faint py-3.5 px-5 border-b border-line bg-bg font-medium ${right ? 'text-right' : 'text-left'}`}>
       {children}
@@ -265,7 +265,7 @@ function Th({ children, right }: { children: React.ReactNode; right?: boolean })
   );
 }
 
-function Td({ children, right, className = '' }: { children: React.ReactNode; right?: boolean; className?: string }) {
+function Td({ children, right, className = '' }: { children?: React.ReactNode; right?: boolean; className?: string }) {
   return (
     <td className={`py-4 px-5 text-[13.5px] align-middle ${right ? 'text-right' : ''} ${className}`}>
       {children}
