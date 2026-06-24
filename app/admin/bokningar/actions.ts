@@ -289,6 +289,67 @@ export async function skickaRecensionsmail(formData: FormData) {
   revalidatePath('/admin/kunder');
 }
 
+const PAKETPAMINNELSE_AMNE = 'Påminnelse om dina bilder';
+const PAKETPAMINNELSE_BRODTEXT_BASE = `,
+
+Hoppas du fått chans att titta igenom galleriet. Ibland är det svårt att välja favoriter.
+
+Hör av dig när du landat i vilket bildpaket du vill ha, så ordnar jag med leverans av dina bilder.
+
+Varma hälsningar
+Anna`;
+
+/**
+ * Skickar påminnelsemail manuellt till kunden om att välja bildpaket.
+ * Anna klickar själv på knappen i dashboard när hon vill påminna.
+ * Sätter paketval_paminnelse_skickat_at så knappen visas som skickad i UI.
+ */
+export async function skickaPaketPaminnelse(formData: FormData) {
+  const supabase = await createClient();
+  const id = String(formData.get('id') || '');
+  const kund_id = String(formData.get('kund_id') || '');
+  if (!id) return;
+
+  const { data: bokning } = await supabase
+    .from('bokningar')
+    .select('id, kund_id')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (!bokning) return;
+
+  const kundIdLokal = bokning.kund_id;
+  if (!kundIdLokal) return;
+
+  const { data: kund } = await supabase
+    .from('kunder')
+    .select('email, fornamn')
+    .eq('id', kundIdLokal)
+    .maybeSingle();
+
+  if (!kund || !kund.email) return;
+
+  const fornamn = kund.fornamn || '';
+  const brodtext = `Hej${fornamn ? ' ' + fornamn : ''}${PAKETPAMINNELSE_BRODTEXT_BASE}`;
+
+  const res = await skickaMail({
+    till: kund.email,
+    amne: PAKETPAMINNELSE_AMNE,
+    brodtext: brodtext,
+  });
+
+  if (res.ok) {
+    await supabase
+      .from('bokningar')
+      .update({ paketval_paminnelse_skickat_at: new Date().toISOString() })
+      .eq('id', id);
+  }
+
+  if (kund_id) revalidatePath(`/admin/kunder/${kund_id}`);
+  revalidatePath('/admin');
+  revalidatePath('/admin/kunder');
+}
+
 export async function deleteBokning(formData: FormData) {
   const supabase = await createClient();
   const id = String(formData.get('id') || '');
