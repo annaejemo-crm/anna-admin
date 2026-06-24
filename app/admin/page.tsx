@@ -3,7 +3,7 @@ import { StatusPill } from '@/components/StatusPill';
 import type { DashboardSummary, BokningExpanderad } from '@/lib/types';
 import { harledBokningStatus, harledAvtalStatus } from '@/lib/types';
 import { AvtalPill } from '@/components/AvtalPill';
-import { gaVidare } from './bokningar/actions';
+import { gaVidare, skickaPaketPaminnelse } from './bokningar/actions';
 import { setBildpaket, togglePaid } from './kunder/actions';
 import Link from 'next/link';
 
@@ -55,7 +55,7 @@ export default async function DashboardPage() {
   const idag = now.toISOString().slice(0, 10);
   const { data: pagaendeRaw } = await supabase
     .from('bokningar')
-    .select('id, datum, plats, kund_id, status, bildpaket_namn, bildpaket_kr, bildpaket_betald, kundgalleri_skickat, kundgalleri_skickat_at, bokning_klar, kund:kunder(fornamn, efternamn, foretagsnamn), fotograferingstyp:fotograferingstyper(namn), avtal(status)')
+    .select('id, datum, plats, kund_id, status, bildpaket_namn, bildpaket_kr, bildpaket_betald, kundgalleri_skickat, kundgalleri_skickat_at, paketval_paminnelse_skickat_at, bokning_klar, kund:kunder(fornamn, efternamn, foretagsnamn), fotograferingstyp:fotograferingstyper(namn), avtal(status)')
     .lt('datum', idag)
     .eq('bokning_klar', false)
     .order('datum', { ascending: false })
@@ -145,14 +145,17 @@ export default async function DashboardPage() {
             <table className="w-full">
               <thead>
                 <tr>
-                  <Th>Datum</Th><Th>Kund</Th><Th>Typ</Th><Th>Plats</Th><Th>Avtal</Th><Th>Status</Th><Th>Paket</Th><Th right>Dagar sedan</Th>
+                  <Th>Datum</Th><Th>Kund</Th><Th>Typ</Th><Th>Plats</Th><Th>Avtal</Th><Th>Status</Th><Th>Paket</Th><Th right>Dagar sen galleri</Th><Th right>Dagar sen foto</Th><Th />
                 </tr>
               </thead>
               <tbody>
                 {pagaende.map(function(b: any) {
                   const dgr = dagarSedan(b.datum);
+                  const dgrGalleri = b.kundgalleri_skickat_at ? dagarSedan(b.kundgalleri_skickat_at.slice(0, 10)) : null;
                   const namn = b.kund?.foretagsnamn || `${b.kund?.fornamn || ''} ${b.kund?.efternamn || ''}`.trim();
                   const st = harledBokningStatus(b);
+                  const visaPaminnelseKnapp = st === 'galleri_skickat' && !b.bildpaket_namn;
+                  const paminnelseSkickad = b.paketval_paminnelse_skickat_at;
                   const klickbar = st === 'vantar_galleri' || st === 'galleri_skickat' || st === 'faktura_skickad';
                   const hjalp = st === 'vantar_galleri'
                     ? 'Klicka när du skickat galleriet'
@@ -212,7 +215,25 @@ export default async function DashboardPage() {
                           </form>
                         )}
                       </Td>
+                      <Td right className={`font-mono text-[12.5px] ${dgrGalleri !== null && dgrGalleri > 7 ? 'text-accent' : 'text-ink-muted'}`}>
+                        {dgrGalleri !== null ? `${dgrGalleri} dgr` : '–'}
+                      </Td>
                       <Td right className={`font-mono text-[12.5px] ${dgr > 14 ? 'text-accent' : 'text-ink-muted'}`}>{dgr} dgr</Td>
+                      <Td>
+                        {visaPaminnelseKnapp ? (
+                          paminnelseSkickad ? (
+                            <span className="text-[11px] text-ink-faint">Påminnelse skickad</span>
+                          ) : (
+                            <form action={skickaPaketPaminnelse}>
+                              <input type="hidden" name="id" value={b.id} />
+                              <input type="hidden" name="kund_id" value={b.kund_id} />
+                              <button type="submit" className="text-[11px] px-2.5 py-1 border border-line-soft rounded-sm hover:border-ink hover:bg-bg whitespace-nowrap">
+                                Skicka påminnelse
+                              </button>
+                            </form>
+                          )
+                        ) : null}
+                      </Td>
                     </tr>
                   );
                 })}
