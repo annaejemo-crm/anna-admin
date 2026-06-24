@@ -3,7 +3,7 @@ import { StatusPill } from '@/components/StatusPill';
 import type { DashboardSummary, BokningExpanderad } from '@/lib/types';
 import { harledBokningStatus, harledAvtalStatus } from '@/lib/types';
 import { AvtalPill } from '@/components/AvtalPill';
-import { gaVidare, skickaPaketPaminnelse, skickaRecensionsmail } from './bokningar/actions';
+import { gaVidare, skickaPaketPaminnelse, skickaRecensionsmail, skippaRecensionsmail } from './bokningar/actions';
 import { setBildpaket, togglePaid } from './kunder/actions';
 import Link from 'next/link';
 
@@ -68,9 +68,10 @@ export default async function DashboardPage() {
   /* Klara bokningar som inte fått recensionsmail än */
   const { data: klaraRaw } = await supabase
     .from('bokningar')
-    .select('id, datum, plats, kund_id, bokning_klar_at, kund:kunder(fornamn, efternamn, foretagsnamn, email), fotograferingstyp:fotograferingstyper(namn)')
+    .select('id, datum, plats, kund_id, bokning_klar_at, skippa_recensionsmail, kund:kunder(fornamn, efternamn, foretagsnamn, email), fotograferingstyp:fotograferingstyper(namn)')
     .eq('bokning_klar', true)
     .is('recension_mail_skickat_at', null)
+    .neq('skippa_recensionsmail', true)
     .order('bokning_klar_at', { ascending: false })
     .limit(30);
 
@@ -147,50 +148,6 @@ export default async function DashboardPage() {
           )}
         </div>
       </section>
-
-      {klaraUtanRecension.length > 0 && (
-        <section className="mb-12">
-          <h2 className="text-2xl font-serif mb-1">Recensionsförfrågan</h2>
-          <p className="text-ink-muted text-[13px] mb-5">
-            Klara bokningar som inte fått en recensionsförfrågan än. Klicka för att skicka mailet.
-          </p>
-          <div className="bg-white border border-line-soft rounded-sm overflow-hidden">
-            <table className="w-full">
-              <thead>
-                <tr>
-                  <Th>Klar</Th><Th>Kund</Th><Th>Typ</Th><Th>Plats</Th><Th />
-                </tr>
-              </thead>
-              <tbody>
-                {klaraUtanRecension.map(function(b: any) {
-                  const namn = b.kund?.foretagsnamn || `${b.kund?.fornamn || ''} ${b.kund?.efternamn || ''}`.trim();
-                  return (
-                    <tr key={b.id} className="border-b border-line-soft last:border-0 hover:bg-bg">
-                      <Td className="font-mono text-[12px] text-ink-muted whitespace-nowrap">
-                        {b.bokning_klar_at ? formatDate(b.bokning_klar_at.slice(0, 10)) : '–'}
-                      </Td>
-                      <Td className="font-serif text-[17px]">
-                        <Link href={`/admin/kunder/${b.kund_id}`}>{namn}</Link>
-                      </Td>
-                      <Td>{b.fotograferingstyp?.namn || '–'}</Td>
-                      <Td>{b.plats || '–'}</Td>
-                      <Td>
-                        <form action={skickaRecensionsmail}>
-                          <input type="hidden" name="id" value={b.id} />
-                          <input type="hidden" name="kund_id" value={b.kund_id} />
-                          <button type="submit" className="text-[11px] px-2.5 py-1 border border-line-soft rounded-sm hover:border-ink hover:bg-bg whitespace-nowrap">
-                            Skicka recensionsmail
-                          </button>
-                        </form>
-                      </Td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
 
       {pagaende.length > 0 && (
         <section className="mb-12">
@@ -290,6 +247,58 @@ export default async function DashboardPage() {
                             </form>
                           )
                         ) : null}
+                      </Td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {klaraUtanRecension.length > 0 && (
+        <section className="mb-12">
+          <h2 className="text-2xl font-serif mb-1">Recensionsförfrågan</h2>
+          <p className="text-ink-muted text-[13px] mb-5">
+            Klara bokningar som inte fått en recensionsförfrågan än. Klicka för att skicka mailet.
+          </p>
+          <div className="bg-white border border-line-soft rounded-sm overflow-hidden">
+            <table className="w-full">
+              <thead>
+                <tr>
+                  <Th>Klar</Th><Th>Kund</Th><Th>Typ</Th><Th>Plats</Th><Th />
+                </tr>
+              </thead>
+              <tbody>
+                {klaraUtanRecension.map(function(b: any) {
+                  const namn = b.kund?.foretagsnamn || `${b.kund?.fornamn || ''} ${b.kund?.efternamn || ''}`.trim();
+                  return (
+                    <tr key={b.id} className="border-b border-line-soft last:border-0 hover:bg-bg">
+                      <Td className="font-mono text-[12px] text-ink-muted whitespace-nowrap">
+                        {b.bokning_klar_at ? formatDate(b.bokning_klar_at.slice(0, 10)) : '–'}
+                      </Td>
+                      <Td className="font-serif text-[17px]">
+                        <Link href={`/admin/kunder/${b.kund_id}`}>{namn}</Link>
+                      </Td>
+                      <Td>{b.fotograferingstyp?.namn || '–'}</Td>
+                      <Td>{b.plats || '–'}</Td>
+                      <Td>
+                        <div className="flex items-center gap-2 justify-end">
+                          <form action={skickaRecensionsmail} className="inline">
+                            <input type="hidden" name="id" value={b.id} />
+                            <input type="hidden" name="kund_id" value={b.kund_id} />
+                            <button type="submit" className="text-[11px] px-2.5 py-1 border border-line-soft rounded-sm hover:border-ink hover:bg-bg whitespace-nowrap">
+                              Skicka recensionsmail
+                            </button>
+                          </form>
+                          <form action={skippaRecensionsmail} className="inline">
+                            <input type="hidden" name="id" value={b.id} />
+                            <button type="submit" title="Skippa - skicka inte till denna kund" className="text-[16px] leading-none text-ink-faint hover:text-accent w-6 h-6 flex items-center justify-center">
+                              ×
+                            </button>
+                          </form>
+                        </div>
                       </Td>
                     </tr>
                   );
