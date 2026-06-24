@@ -289,6 +289,19 @@ export async function skickaRecensionsmail(formData: FormData) {
   revalidatePath('/admin/kunder');
 }
 
+/**
+ * Markerar en bokning så den inte längre visas i Recensionsförfrågan-listan.
+ * Anna klickar X på dashboarden när hon inte vill be om recension från just den kunden.
+ */
+export async function skippaRecensionsmail(formData: FormData) {
+  const supabase = await createClient();
+  const id = String(formData.get('id') || '');
+  if (!id) return;
+  await supabase.from('bokningar').update({ skippa_recensionsmail: true }).eq('id', id);
+  revalidatePath('/admin');
+  revalidatePath('/admin/kunder');
+}
+
 const PAKETPAMINNELSE_AMNE = 'Påminnelse om dina bilder';
 const PAKETPAMINNELSE_BRODTEXT_BASE = `,
 
