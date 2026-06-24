@@ -6,10 +6,10 @@ import { redirect } from 'next/navigation';
 import { skickaMail } from '@/lib/mail';
 
 const GOOGLE_REVIEW_URL = 'https://g.page/r/CYzaSIzh9wxIEBM/review';
-const RECENSIONSMAIL_AMNE = 'Tack för att du valde mig';
+const RECENSIONSMAIL_AMNE = 'Tack för ditt förtroende';
 const RECENSIONSMAIL_BRODTEXT_BASE = `,
 
-Hoppas du är nöjd med bilderna! Det betyder enormt mycket för mig som liten verksamhet om du har en stund över att lämna en kort recension på Google. Det hjälper andra att hitta mig och är det bästa sättet jag kan växa på.
+Hoppas du är nöjd med bilderna! Det betyder enormt mycket för mig som liten verksamhet om du har en stund över att lämna en kort recension på Google. Det hjälper andra att hitta mig och är ett väldigt bra sätt för mig att växa på.
 
 Här är länken: ${GOOGLE_REVIEW_URL}
 
