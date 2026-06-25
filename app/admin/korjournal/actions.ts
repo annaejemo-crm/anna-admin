@@ -30,7 +30,6 @@ async function flyttaRad(id: string, riktning: 'upp' | 'ner') {
 
   const radPos = (rad.pos as number) ?? 0;
 
-  // Hämta granne med samma datum OCH samma bil (annars swap:as resor mellan bilar)
   let queryGranne = supabase
     .from('korjournal')
     .select('id, pos')
@@ -49,7 +48,6 @@ async function flyttaRad(id: string, riktning: 'upp' | 'ner') {
 
   if (granne) {
     const grannePos = (granne.pos as number) ?? 0;
-    // Om pos är samma så bumpa rad ett steg innan swap så de inte krockar
     if (grannePos === radPos) {
       const tempPos = riktning === 'upp' ? radPos - 1 : radPos + 1;
       await supabase.from('korjournal').update({ pos: tempPos }).eq('id', rad.id);
@@ -58,7 +56,6 @@ async function flyttaRad(id: string, riktning: 'upp' | 'ner') {
       await supabase.from('korjournal').update({ pos: radPos }).eq('id', granne.id);
     }
   } else {
-    // Ingen granne. Sätt nytt pos relativt rad.
     const nyPos = riktning === 'upp' ? radPos - 1 : radPos + 1;
     await supabase.from('korjournal').update({ pos: nyPos }).eq('id', rad.id);
   }
@@ -76,10 +73,6 @@ export async function flyttaKorjournalpostNer(formData: FormData) {
   await flyttaRad(id, 'ner');
 }
 
-/**
- * Lägg till en manuell körjournal-post.
- * För resor som inte hör till en bokning, eller poster du vill rätta i efterhand.
- */
 export async function skapaKorjournalpost(formData: FormData) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -117,9 +110,6 @@ export async function skapaKorjournalpost(formData: FormData) {
   revalidatePath('/admin/korjournal');
 }
 
-/**
- * Byter bil för en körjournal-rad (mellan TMX76G och UDD408).
- */
 export async function bytBilForKorjournalpost(formData: FormData) {
   const supabase = await createClient();
   const id = String(formData.get('id') || '');
@@ -135,10 +125,6 @@ export async function bytBilForKorjournalpost(formData: FormData) {
   revalidatePath('/admin/korjournal');
 }
 
-/**
- * Uppdatera en befintlig körjournal-rad. Anna kan ändra datum, syfte,
- * plats, km och kund direkt på raden.
- */
 export async function uppdateraKorjournalpost(formData: FormData) {
   const supabase = await createClient();
   const id = String(formData.get('id') || '');
@@ -162,11 +148,6 @@ export async function uppdateraKorjournalpost(formData: FormData) {
   revalidatePath('/admin/korjournal');
 }
 
-/**
- * Synka körjournal från bokningar vars datum har passerat (eller är idag).
- * Skapar rader även när avstånd saknas så Anna kan fylla i km själv.
- * Syfte är alltid "Fotografering". Kunden hamnar i Kund-kolumnen.
- */
 export async function synkaKorjournalFranBokningar(_formData?: FormData) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -174,7 +155,6 @@ export async function synkaKorjournalFranBokningar(_formData?: FormData) {
 
   const idag = new Date().toISOString().slice(0, 10);
 
-  // 1. Koppla bokningar till platser där text matchar (om plats_id saknas)
   const { data: platser } = await supabase
     .from('platser')
     .select('id, namn, avstand_km_enkel, adress')
@@ -200,21 +180,18 @@ export async function synkaKorjournalFranBokningar(_formData?: FormData) {
     }
   }
 
-  // 2. Hämta alla bokningar där datum har passerat
   const { data: passerade } = await supabase
     .from('bokningar')
     .select('id, datum, plats, adress, avstand_km_enkel, plats_id, kund:kunder(fornamn, efternamn, foretagsnamn), plats_ref:platser!plats_id(namn, adress)')
     .lte('datum', idag)
     .not('datum', 'is', null);
 
-  // 3. Hämta vilka bokning_id som redan finns i körjournal
   const { data: befintliga } = await supabase
     .from('korjournal')
     .select('bokning_id')
     .not('bokning_id', 'is', null);
   const finns = new Set((befintliga || []).map((r: any) => r.bokning_id));
 
-  // 4. Skapa rader för de som saknas
   let skapade = 0;
   for (const b of (passerade || []) as any[]) {
     if (finns.has(b.id)) continue;
@@ -241,12 +218,11 @@ export async function synkaKorjournalFranBokningar(_formData?: FormData) {
     if (!error) skapade++;
   }
 
-  revalidatePath('/admin/korjournal');
+  if (_formData !== undefined) {
+    revalidatePath('/admin/korjournal');
+  }
 }
 
-/**
- * Uppdatera mätarställning för ett år (vid årets början eller slut).
- */
 export async function sparaMatarstallning(formData: FormData) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
