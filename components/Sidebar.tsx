@@ -18,6 +18,7 @@ const NAV = [
     title: 'Arbete',
     items: [
       { href: '/admin/mail', label: 'Mailmallar' },
+      { href: '/admin/leads', label: 'Guideleads' },
       { href: '/admin/avtal', label: 'Avtal & signering' },
       { href: '/admin/ekonomi', label: 'Ekonomi' },
       { href: '/admin/korjournal', label: 'Körjournal' },
