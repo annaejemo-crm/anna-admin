@@ -49,24 +49,22 @@ export async function POST(req: Request) {
   const email = hittaEmail(body);
   const namn = hittaNamn(body);
 
+  /* Anrop utan email (testpingar och felaktiga payloads) sparas inte,
+     de skapade bara tomma rader i listan. MailerLite skickar alltid email. */
+  if (!email) {
+    return NextResponse.json({ ok: true, skipped: 'no email in payload' });
+  }
+
   const supabase = createServiceClient();
 
-  if (email) {
-    const { error } = await supabase
-      .from('guide_leads')
-      .upsert(
-        { email: email.toLowerCase(), namn, kalla, raw: body },
-        { onConflict: 'email' },
-      );
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-  } else {
-    /* Ingen email hittad i payloaden. Spara raw ändå så inget tappas bort. */
-    const { error } = await supabase.from('guide_leads').insert({ raw: body, kalla });
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
+  const { error } = await supabase
+    .from('guide_leads')
+    .upsert(
+      { email: email.toLowerCase(), namn, kalla, raw: body },
+      { onConflict: 'email' },
+    );
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });
