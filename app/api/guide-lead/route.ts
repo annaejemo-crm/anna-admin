@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 
-/* Tar emot webhook från MailerLite-automationen "Simple welcome email".
-   Anropas när någon ny går med i gruppen Fotografer guide (laddar ner gratisguiden).
+/* Tar emot webhooks från MailerLite-automationerna.
+   Fotografer: "Simple welcome email" (gruppen Fotografer guide), utan typ-param.
+   Kunder: "Gravidguide välkomstmejl" (gruppen Gravida guide), med ?typ=kund.
    Token skickas som query-param eftersom MailerLites webhook-steg inte stöder egna headers. */
 
 const WEBHOOK_TOKEN = 'aedc0cc4c2b83205c7c1e327063a9ba9728366fbfda53292';
@@ -35,6 +36,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
+  /* Källan skiljer listorna åt: Gratisguide = fotografer, Gravidguide = kunder. */
+  const kalla = url.searchParams.get('typ') === 'kund' ? 'Gravidguide' : 'Gratisguide';
+
   let body: unknown = null;
   try {
     body = await req.json();
@@ -51,7 +55,7 @@ export async function POST(req: Request) {
     const { error } = await supabase
       .from('guide_leads')
       .upsert(
-        { email: email.toLowerCase(), namn, raw: body },
+        { email: email.toLowerCase(), namn, kalla, raw: body },
         { onConflict: 'email' },
       );
     if (error) {
@@ -59,7 +63,7 @@ export async function POST(req: Request) {
     }
   } else {
     /* Ingen email hittad i payloaden. Spara raw ändå så inget tappas bort. */
-    const { error } = await supabase.from('guide_leads').insert({ raw: body });
+    const { error } = await supabase.from('guide_leads').insert({ raw: body, kalla });
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
