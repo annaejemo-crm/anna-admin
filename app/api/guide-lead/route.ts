@@ -8,11 +8,21 @@ import { createServiceClient } from '@/lib/supabase/server';
 
 const WEBHOOK_TOKEN = 'aedc0cc4c2b83205c7c1e327063a9ba9728366fbfda53292';
 
+/* MailerLite skickar ibland subscriber direkt, ibland batchat som
+   { events: [ { subscriber: {...} } ] }. Båda formaten hanteras här. */
+
 function hittaEmail(obj: unknown): string | null {
   if (!obj || typeof obj !== 'object') return null;
+  if (Array.isArray(obj)) {
+    for (const item of obj) {
+      const found = hittaEmail(item);
+      if (found) return found;
+    }
+    return null;
+  }
   const o = obj as Record<string, unknown>;
   if (typeof o.email === 'string' && o.email.includes('@')) return o.email;
-  for (const key of ['subscriber', 'data', 'fields']) {
+  for (const key of ['subscriber', 'data', 'fields', 'events']) {
     const found = hittaEmail(o[key]);
     if (found) return found;
   }
@@ -21,9 +31,16 @@ function hittaEmail(obj: unknown): string | null {
 
 function hittaNamn(obj: unknown): string | null {
   if (!obj || typeof obj !== 'object') return null;
+  if (Array.isArray(obj)) {
+    for (const item of obj) {
+      const found = hittaNamn(item);
+      if (found) return found;
+    }
+    return null;
+  }
   const o = obj as Record<string, unknown>;
   if (typeof o.name === 'string' && o.name.trim()) return o.name.trim();
-  for (const key of ['subscriber', 'data', 'fields']) {
+  for (const key of ['subscriber', 'data', 'fields', 'events']) {
     const found = hittaNamn(o[key]);
     if (found) return found;
   }
