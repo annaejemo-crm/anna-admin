@@ -78,7 +78,7 @@ export default async function TraktamentePage(props: { searchParams?: Promise<{ 
             <div className="eyebrow mb-1.5">Arbete</div>
             <h1 className="font-serif text-[42px] font-light leading-tight">Traktamente</h1>
             <p className="text-sm text-ink-muted mt-3 max-w-xl">
-              Skattefria traktamenten enligt Skatteverkets schablon (290 kr heldag, 145 kr halvdag, 145 kr per natt). Måltidsavdrag dras automatiskt. Skicka filen till revisorn i slutet av månaden eller kvartalet.
+              Skattefria traktamenten enligt Skatteverkets schablon för resans inkomstår (2026: 300 kr heldag, 150 kr halvdag, 150 kr per natt). Måltidsavdrag dras automatiskt. Skicka filen till revisorn i slutet av månaden eller kvartalet.
             </p>
           </div>
           <a
@@ -120,9 +120,9 @@ export default async function TraktamentePage(props: { searchParams?: Promise<{ 
           {editingPost && <input type="hidden" name="id" value={editingPost.id} />}
 
           <div className="bg-bg-subtle border border-line-soft rounded-sm p-3 text-[12.5px] text-ink-muted space-y-1.5">
-            <div><strong className="text-ink">Schablonen täcker dina egna kostnader.</strong> Heldag 290 kr, halvdag 145 kr. Du behöver inte rapportera vad du själv betalat för mat eller småttis.</div>
+            <div><strong className="text-ink">Schablonen täcker dina egna kostnader.</strong> För 2026 gäller heldag 300 kr och halvdag 150 kr (beloppen väljs automatiskt utifrån resans år). Du behöver inte rapportera vad du själv betalat för mat eller småttis.</div>
             <div><strong className="text-ink">Frukost, lunch, middag nedan:</strong> ange bara antal måltider som NÅGON ANNAN bjöd på (kund som bjuder lunch, hotellfrukost ingår i boende, etc). Lämna 0 om du själv betalade måltiden, oavsett om du betalade kontant eller via AB-kort.</div>
-            <div><strong className="text-ink">Boendet:</strong> bocka rutan längst ner om kunden betalt hotellet ELLER om Fotograf Anna Ejemo AB betalt hotellet (med kvitto i bokföringen). Då dras nattschablonen 145 kr bort så du inte får dubbel ersättning.</div>
+            <div><strong className="text-ink">Boendet:</strong> bocka rutan längst ner om kunden betalt hotellet ELLER om Fotograf Anna Ejemo AB betalt hotellet (med kvitto i bokföringen). Då dras nattschablonen (150 kr för 2026) bort så du inte får dubbel ersättning.</div>
           </div>
 
           <div className="grid grid-cols-[140px_140px_1.5fr_1fr_140px_140px] gap-2 items-end">
