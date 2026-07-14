@@ -11,7 +11,13 @@ type Lead = {
   created_at: string;
   senast_mejlad_at: string | null;
   avregistrerad: boolean;
+  raw?: { _guider?: string[] } | null;
 };
+
+function guiderFor(l: Lead): string[] {
+  const g = l.raw?._guider;
+  return Array.isArray(g) ? g : [];
+}
 
 const MONTH_NAMES = ['januari', 'februari', 'mars', 'april', 'maj', 'juni', 'juli', 'augusti', 'september', 'oktober', 'november', 'december'];
 
@@ -62,6 +68,7 @@ export function LeadsUtskick({ leads }: { leads: Lead[] }) {
               <th className={TH}>Datum</th>
               <th className={TH}>Namn</th>
               <th className={TH}>Email</th>
+              <th className={TH}>Guider</th>
               <th className={TH}>Senast mejlad</th>
               <th className={`${TH} text-right`}></th>
             </tr>
@@ -69,7 +76,7 @@ export function LeadsUtskick({ leads }: { leads: Lead[] }) {
           <tbody>
             {leads.length === 0 && (
               <tr>
-                <td colSpan={6} className={`${TD} py-8 text-ink-muted text-center`}>
+                <td colSpan={7} className={`${TD} py-8 text-ink-muted text-center`}>
                   Inga leads än. De dyker upp här när någon laddar ner guiden.
                 </td>
               </tr>
@@ -98,6 +105,22 @@ export function LeadsUtskick({ leads }: { leads: Lead[] }) {
                     <a href={`mailto:${l.email}`} className="underline decoration-line hover:decoration-ink">
                       {l.email}
                     </a>
+                  ) : (
+                    '–'
+                  )}
+                </td>
+                <td className={TD}>
+                  {guiderFor(l).length > 0 ? (
+                    <span className="flex flex-wrap gap-1">
+                      {guiderFor(l).map((g) => (
+                        <span
+                          key={g}
+                          className="inline-block whitespace-nowrap rounded-sm border border-line-soft bg-band px-2 py-0.5 text-[11px] text-ink"
+                        >
+                          {g}
+                        </span>
+                      ))}
+                    </span>
                   ) : (
                     '–'
                   )}
