@@ -3,10 +3,20 @@ import { createServiceClient } from '@/lib/supabase/server';
 
 /* Tar emot webhooks från MailerLite-automationerna.
    Fotografer: "Simple welcome email" (gruppen Fotografer guide), utan typ-param.
-   Kunder: "Gravidguide välkomstmejl" (gruppen Gravida guide), med ?typ=kund.
-   Token skickas som query-param eftersom MailerLites webhook-steg inte stöder egna headers. */
+   Kunder: "Gravidguide välkomstmejl" m.fl. (gruppen Gravida guide), med ?typ=kund.
+   Varje automation skickar även ?guide=<slug> så vi kan visa vilka guider en
+   person laddat ner. Guiderna ackumuleras per mejl i raw._guider (ingen kolumn
+   behövs), så en person som laddar ner flera guider får flera taggar.
+   Token skickas som query-param eftersom MailerLites webhook-steg inte stöder headers. */
 
 const WEBHOOK_TOKEN = 'aedc0cc4c2b83205c7c1e327063a9ba9728366fbfda53292';
+
+const GUIDE_LABELS: Record<string, string> = {
+  vantan: 'Att fotografera väntan',
+  seo: 'SEO-guide',
+  forbered: 'Förbered dig',
+  vecka: 'Vecka för vecka',
+};
 
 /* MailerLite skickar ibland subscriber direkt, ibland batchat som
    { events: [ { subscriber: {...} } ] }. Båda formaten hanteras här. */
@@ -56,6 +66,12 @@ export async function POST(req: Request) {
   /* Källan skiljer listorna åt: Gratisguide = fotografer, Gravidguide = kunder. */
   const kalla = url.searchParams.get('typ') === 'kund' ? 'Gravidguide' : 'Gratisguide';
 
+  /* Vilken specifik guide laddades ner. Faller tillbaka på källan om param saknas. */
+  const guideSlug = url.searchParams.get('guide') || '';
+  const guideLabel =
+    GUIDE_LABELS[guideSlug] ||
+    (kalla === 'Gravidguide' ? 'Gravidguide' : 'Att fotografera väntan');
+
   let body: unknown = null;
   try {
     body = await req.json();
@@ -66,23 +82,40 @@ export async function POST(req: Request) {
   const email = hittaEmail(body);
   const namn = hittaNamn(body);
 
-  /* Anrop utan email (testpingar och felaktiga payloads) sparas inte,
-     de skapade bara tomma rader i listan. MailerLite skickar alltid email. */
+  /* Anrop utan email (testpingar och felaktiga payloads) sparas inte. */
   if (!email) {
     return NextResponse.json({ ok: true, skipped: 'no email in payload' });
   }
 
   const supabase = createServiceClient();
+  const epost = email.toLowerCase();
+
+  /* Läs befintlig rad så vi kan slå ihop guider och behålla namn. */
+  const { data: existing } = await supabase
+    .from('guide_leads')
+    .select('namn, raw')
+    .eq('email', epost)
+    .maybeSingle();
+
+  const prevRaw = (existing?.raw && typeof existing.raw === 'object' && !Array.isArray(existing.raw)
+    ? (existing.raw as Record<string, unknown>)
+    : {}) as Record<string, unknown>;
+  const prevGuider = Array.isArray(prevRaw._guider) ? (prevRaw._guider as string[]) : [];
+  const guider = Array.from(new Set([...prevGuider, guideLabel]));
+
+  const nyRaw = Array.isArray(body)
+    ? { events: body, _guider: guider }
+    : { ...((body as Record<string, unknown>) || {}), _guider: guider };
 
   const { error } = await supabase
     .from('guide_leads')
     .upsert(
-      { email: email.toLowerCase(), namn, kalla, raw: body },
+      { email: epost, namn: namn || existing?.namn || null, kalla, raw: nyRaw },
       { onConflict: 'email' },
     );
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, guider });
 }
