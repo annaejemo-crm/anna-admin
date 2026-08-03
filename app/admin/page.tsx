@@ -157,7 +157,18 @@ export default async function DashboardPage() {
                     </Td>
                     <Td>{b.fotograferingstyp?.namn || '–'}</Td>
                     <Td>{b.plats || '–'}</Td>
-                    <Td><AvtalPill status={harledAvtalStatus(b)} /></Td>
+                    <Td>
+                      {harledAvtalStatus(b) === 'inget' ? (
+                        <Link
+                          href={`/admin/bokningar/${b.id}/avtal`}
+                          className="text-[11px] px-2.5 py-1 border border-line-soft rounded-sm hover:border-ink hover:bg-bg whitespace-nowrap"
+                        >
+                          Skapa avtal
+                        </Link>
+                      ) : (
+                        <AvtalPill status={harledAvtalStatus(b)} />
+                      )}
+                    </Td>
                     <Td><StatusPill status={harledBokningStatus(b)} /></Td>
                     <Td right className="font-mono text-[12.5px]">{b.bokningsavgift_kr || b.bildpaket_kr ? `${((b.bokningsavgift_kr || 0) + (b.bildpaket_kr || 0)).toLocaleString('sv-SE')} kr` : '–'}</Td>
                   </tr>
