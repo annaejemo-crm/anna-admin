@@ -37,6 +37,25 @@ export default async function DashboardPage() {
   const { data: summary } = await supabase.rpc('dashboard_summary', { p_ar: year });
   const k = (summary || {}) as DashboardSummary;
 
+  /* Inkommit och vantar pa paketval raknas fran bokningarnas egna falt.
+     RPC:n laser inkommit fran tabellen betalningar, som appen aldrig skriver
+     till, och raknar paketval pa statusvarden som appen aldrig satter. */
+  const { data: aretsBokningarRaw } = await supabase
+    .from('bokningar')
+    .select('bokningsavgift_kr, bildpaket_kr, bokningsavgift_betald, bildpaket_betald, bildpaket_namn, kundgalleri_skickat, bokning_klar, status')
+    .gte('datum', year + '-01-01')
+    .lte('datum', year + '-12-31');
+
+  let inkommitKr = 0;
+  let vantarPaketval = 0;
+  for (const b of (aretsBokningarRaw || []) as any[]) {
+    if (b.bokningsavgift_betald) inkommitKr += Number(b.bokningsavgift_kr) || 0;
+    if (b.bildpaket_betald) inkommitKr += Number(b.bildpaket_kr) || 0;
+    if (b.status !== 'avbokad' && !b.bokning_klar && b.kundgalleri_skickat && !b.bildpaket_namn) {
+      vantarPaketval += 1;
+    }
+  }
+
   /* Närmaste veckan: bokningar inom +/- 7 dagar */
   const now = new Date();
   const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
@@ -71,7 +90,7 @@ export default async function DashboardPage() {
     .select('id, datum, plats, kund_id, bokning_klar_at, skippa_recensionsmail, kund:kunder(fornamn, efternamn, foretagsnamn, email), fotograferingstyp:fotograferingstyper(namn)')
     .eq('bokning_klar', true)
     .is('recension_mail_skickat_at', null)
-    .neq('skippa_recensionsmail', true)
+    .not('skippa_recensionsmail', 'is', true)
     .order('bokning_klar_at', { ascending: false })
     .limit(30);
 
@@ -106,10 +125,10 @@ export default async function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-4 gap-6 mb-12">
-        <Kpi label="Bokningar 2026" value={String(k.antal_bokningar || 0)} sub={`${k.antal_privat || 0} privat · ${k.antal_foretag || 0} företag`} />
-        <Kpi label="Bokad omsättning" value={`${(k.bokad_omsattning_kr || 0).toLocaleString('sv-SE')} kr`} sub="totalt avtalat 2026" />
-        <Kpi label="Inkommit hittills" value={`${(k.inkommit_kr || 0).toLocaleString('sv-SE')} kr`} sub="registrerade betalningar" />
-        <Kpi label="Väntar på paketval" value={String(k.vantar_paketval || 0)} sub="kunder som sett bilder" />
+        <Kpi label={`Bokningar ${year}`} value={String(k.antal_bokningar || 0)} sub={`${k.antal_privat || 0} privat · ${k.antal_foretag || 0} företag`} />
+        <Kpi label="Bokad omsättning" value={`${(k.bokad_omsattning_kr || 0).toLocaleString('sv-SE')} kr`} sub={`totalt avtalat ${year}`} />
+        <Kpi label="Inkommit hittills" value={`${inkommitKr.toLocaleString('sv-SE')} kr`} sub="markerade som betalda" />
+        <Kpi label="Väntar på paketval" value={String(vantarPaketval)} sub="kunder som sett bilder" />
       </div>
 
       <section className="mb-12">
