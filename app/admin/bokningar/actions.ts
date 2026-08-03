@@ -134,6 +134,7 @@ export async function updateBokning(formData: FormData) {
     }
   }
 
+  revalidatePath('/admin');
   revalidatePath(`/admin/kunder/${kund_id}`);
   revalidatePath('/admin/kunder');
   revalidatePath('/admin/ekonomi');
@@ -200,8 +201,17 @@ export async function gaVidare(formData: FormData) {
       bokning_klar_at: new Date().toISOString(),
     }).eq('id', id);
 
-    // Auto-skapa körjournal-rad om bokningen har avstånd
-    if (user && b.avstand_km_enkel && Number(b.avstand_km_enkel) > 0) {
+    // Auto-skapa rad i körjournalen om bokningen har avstånd.
+    // Kollar först att det inte redan finns en rad, annars får Anna dubbla
+    // resor varje gång hon klickar tillbaka från klar och sedan klar igen.
+    const { data: befintligaRader } = await supabase
+      .from('korjournal')
+      .select('id')
+      .eq('bokning_id', id)
+      .limit(1);
+    const harRedanRad = !!(befintligaRader && befintligaRader.length > 0);
+
+    if (user && !harRedanRad && b.avstand_km_enkel && Number(b.avstand_km_enkel) > 0) {
       const kund: any = b.kund;
       const platsRef: any = b.plats_ref;
       const kundNamn = kund?.foretagsnamn || `${kund?.fornamn || ''} ${kund?.efternamn || ''}`.trim();
