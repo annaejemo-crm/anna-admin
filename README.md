@@ -79,3 +79,10 @@ Hela bygget tar flera sessioner. Du jobbar i prototypen tills den riktiga versio
 - **Resend** – mailutskick (läggs till senare)
 - **Cloudflare R2** – bildlagring (läggs till om du vill ha gallerier)
 - **Vercel** – hosting
+
+## Filstruktur
+
+All appkod ligger pa roten av repot: `app/`, `components/`, `lib/`.
+Det finns ingen undermapp `anna-admin/` langre, den innehol en dod kopia
+av korjournalen som Next.js aldrig laste. Redigerar du en fil, kontrollera
+att sokvagen borjar med `app/` och inte nagot annat.
