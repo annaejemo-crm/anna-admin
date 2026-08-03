@@ -86,7 +86,7 @@ export async function togglePaid(formData: FormData) {
         // avgift: 3-läges cykel
       const { data } = await supabase
           .from('bokningar')
-          .select('bokningsavgift_fakturerad, bokningsavgift_betald, kund_id')
+          .select('bokningsavgift_fakturerad, bokningsavgift_betald, kund_id, datum')
           .eq('id', id)
           .maybeSingle();
 
@@ -107,9 +107,15 @@ export async function togglePaid(formData: FormData) {
                     bokningsavgift_betald: true,
           }).eq('id', id);
 
+          // Tackmailet ska bara ga ut nar fotograferingen ligger framat i tiden.
+          // Markerar Anna en gammal bokning i efterhand vore ett mail om en
+          // betalning fran flera manader sedan bara forvirrande.
+          const idagDatum = new Date().toISOString().slice(0, 10);
+          const skickaTackmail = !data.datum || String(data.datum) >= idagDatum;
+
           // Hämta kundens email
           const kundIdLokal = data.kund_id;
-              if (kundIdLokal) {
+              if (skickaTackmail && kundIdLokal) {
                         const { data: kund } = await supabase
                           .from('kunder')
                           .select('email')
