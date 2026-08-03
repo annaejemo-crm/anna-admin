@@ -3,6 +3,10 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
+import { skickaMail } from '@/lib/mail';
+
+const AVTAL_AMNE = 'Ditt avtal för fotograferingen';
 
 function slug(): string {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
@@ -111,9 +115,51 @@ export async function skickaAvtal(formData: FormData) {
     }).eq('id', bokning_id);
   }
 
+  // Maila lanken till kunden direkt. Tidigare fick Anna kopiera lanken
+  // och skicka den fran sin egen mail, vilket var det som gjorde att
+  // avtalsfunktionen aldrig kom till anvandning.
+  let mailStatus = 'ingen_adress';
+
+  const { data: avtalRad } = await supabase
+    .from('avtal')
+    .select('slug, bokning:bokningar(kund:kunder(fornamn, email))')
+    .eq('id', id)
+    .maybeSingle();
+
+  const bokningRel: any = avtalRad ? (avtalRad as any).bokning : null;
+  const kund: any = bokningRel ? bokningRel.kund : null;
+
+  if (avtalRad && kund && kund.email) {
+    const h = await headers();
+    const protokoll = h.get('x-forwarded-proto') || 'https';
+    const vard = h.get('host') || '';
+    const lank = `${protokoll}://${vard}/avtal/${avtalRad.slug}`;
+    const fornamn = kund.fornamn || '';
+
+    const brodtext = `Hej${fornamn ? ' ' + fornamn : ''},
+
+Här kommer avtalet för din fotografering. Läs igenom det i lugn och ro och signera digitalt med ditt namn längst ner på sidan.
+
+${lank}
+
+Hör av dig om något är oklart.
+
+Varma hälsningar
+Anna`;
+
+    const res = await skickaMail({
+      till: kund.email,
+      amne: AVTAL_AMNE,
+      brodtext: brodtext,
+    });
+    mailStatus = res.ok ? 'ok' : 'fel';
+  }
+
   revalidatePath(`/admin/avtal/${id}`);
   revalidatePath('/admin/avtal');
   revalidatePath(`/admin/kunder`);
+  revalidatePath('/admin');
+  redirect(`/admin/avtal/${id}?mail=${mailStatus}`);
 }
 
 export async function raderaAvtal(formData: FormData) {
