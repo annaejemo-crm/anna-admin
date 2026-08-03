@@ -26,8 +26,9 @@ const STANDARD_KLAUSULER: { titel: string; brodtext: string }[] = [
   },
 ];
 
-export default async function NyttAvtalPage(props: { params: Promise<{ id: string }> }) {
+export default async function NyttAvtalPage(props: { params: Promise<{ id: string }>; searchParams?: Promise<{ mall?: string }> }) {
   const params = await props.params;
+  const sp = props.searchParams ? await props.searchParams : {};
   const supabase = await createClient();
 
   const { data: bokning } = await supabase
@@ -40,10 +41,30 @@ export default async function NyttAvtalPage(props: { params: Promise<{ id: strin
 
   const { data: mallar } = await supabase
     .from('avtal_mallar')
-    .select('id, namn, klausuler')
+    .select('id, namn, fotograferingstyp, klausuler')
     .order('ordning');
 
-  const valdMall: any = (mallar && mallar.find(function(m: any) { return m.namn === 'Familjefotografering' || m.namn === 'Gravidfotografering'; })) || (mallar && mallar.length > 0 ? mallar[0] : null);
+  const allaMallar: any[] = (mallar || []) as any[];
+
+  // Mallen valdes tidigare pa hardkodat namn, sa varje avtal fick samma mall
+  // oavsett vad bokningen gallde. En gravidfotografering fick text om
+  // familjefotografering. Nu matchas mallen mot bokningens typ, och Anna kan
+  // byta manuellt om matchningen inte traffar ratt.
+  const typNamn = String((bokning as any).fotograferingstyp?.namn || '').toLowerCase().trim();
+
+  function mallPassarTypen(m: any): boolean {
+    if (!typNamn) return false;
+    const typFalt = String(m.fotograferingstyp || '').toLowerCase().trim();
+    const mallNamn = String(m.namn || '').toLowerCase().trim();
+    if (typFalt && (typFalt === typNamn || typFalt.startsWith(typNamn) || typNamn.startsWith(typFalt))) return true;
+    if (mallNamn && (mallNamn.startsWith(typNamn) || typNamn.startsWith(mallNamn))) return true;
+    return false;
+  }
+
+  const manuellMall = sp.mall ? allaMallar.find(function(m: any) { return m.id === sp.mall; }) : null;
+  const automatiskMall = allaMallar.find(mallPassarTypen);
+  const valdMall: any = manuellMall || automatiskMall || (allaMallar.length > 0 ? allaMallar[0] : null);
+  const traffadeTypen = !!manuellMall || !!automatiskMall;
   const startKlausuler: any[] = valdMall && Array.isArray(valdMall.klausuler) && valdMall.klausuler.length > 0
     ? valdMall.klausuler
     : STANDARD_KLAUSULER;
@@ -94,6 +115,33 @@ export default async function NyttAvtalPage(props: { params: Promise<{ id: strin
             </div>
           </dl>
         </div>
+
+        {allaMallar.length > 0 && (
+          <div className="bg-white border border-line-soft rounded-sm p-6">
+            <div className="eyebrow mb-4">Mall</div>
+            <div className="flex flex-wrap gap-2">
+              {allaMallar.map(function(m: any) {
+                const aktiv = valdMall && m.id === valdMall.id;
+                return (
+                  <a
+                    key={m.id}
+                    href={`/admin/bokningar/${bokning.id}/avtal?mall=${m.id}`}
+                    className={`px-3 py-1.5 text-sm rounded-sm transition-colors ${
+                      aktiv ? 'bg-ink text-bg' : 'bg-white border border-line-soft text-ink hover:border-line'
+                    }`}
+                  >
+                    {m.namn}
+                  </a>
+                );
+              })}
+            </div>
+            <p className="text-[12px] text-ink-muted mt-3">
+              {traffadeTypen
+                ? `Vald utifrån fotograferingstypen${typNamn ? ` (${(bokning as any).fotograferingstyp.namn})` : ''}. Byter du mall laddas texterna nedan om.`
+                : 'Ingen mall matchar den här fotograferingstypen, så första mallen visas. Välj rätt mall innan du skapar avtalet.'}
+            </p>
+          </div>
+        )}
 
         <div className="bg-white border border-line-soft rounded-sm p-6">
           <div className="eyebrow mb-4">Personligt meddelande (visas högst upp i avtalet)</div>
