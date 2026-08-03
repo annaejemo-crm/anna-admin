@@ -180,10 +180,13 @@ export async function synkaKorjournalFranBokningar(_formData?: FormData) {
     }
   }
 
+  // Bara bokningar som redan agt rum. Dagens bokningar tas in forst imorgon,
+  // sa en fotografering som flyttas eller avbokas under dagen inte hamnar
+  // i korjournalen i onodan.
   const { data: passerade } = await supabase
     .from('bokningar')
-    .select('id, datum, plats, adress, avstand_km_enkel, plats_id, kund:kunder(fornamn, efternamn, foretagsnamn), plats_ref:platser!plats_id(namn, adress)')
-    .lte('datum', idag)
+    .select('id, datum, plats, adress, avstand_km_enkel, plats_id, status, kund:kunder(fornamn, efternamn, foretagsnamn), plats_ref:platser!plats_id(namn, adress)')
+    .lt('datum', idag)
     .not('datum', 'is', null);
 
   const { data: befintliga } = await supabase
@@ -195,6 +198,9 @@ export async function synkaKorjournalFranBokningar(_formData?: FormData) {
   let skapade = 0;
   for (const b of (passerade || []) as any[]) {
     if (finns.has(b.id)) continue;
+    // Avbokade fotograferingar blev aldrig av och ska inte ligga som resor
+    // i underlaget till revisorn.
+    if (b.status === 'avbokad') continue;
     const kund: any = b.kund;
     const platsRef: any = b.plats_ref;
     const kundNamn = kund?.foretagsnamn || `${kund?.fornamn || ''} ${kund?.efternamn || ''}`.trim();
