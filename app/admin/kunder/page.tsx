@@ -153,7 +153,7 @@ export default async function KunderPage(props: { searchParams?: Promise<{ ar?: 
                             ) : (
                               <StatusPill status={st} />
                             )}
-                            {b.bokning_klar && b.kund?.email && !b.recension_mail_skickat_at && (
+                            {b.bokning_klar && b.kund?.email && !b.recension_mail_skickat_at && !b.skippa_recensionsmail && (
                               <form action={skickaRecensionsmail} className="inline">
                                 <input type="hidden" name="id" value={b.id} />
                                 <input type="hidden" name="kund_id" value={b.kund_id} />
