@@ -18,8 +18,10 @@ const STATUS_LABEL: Record<string, string> = {
   avbruten: 'Avbruten',
 };
 
-export default async function AvtalDetaljPage(props: { params: Promise<{ id: string }> }) {
+export default async function AvtalDetaljPage(props: { params: Promise<{ id: string }>; searchParams?: Promise<{ mail?: string }> }) {
   const params = await props.params;
+  const sp = props.searchParams ? await props.searchParams : {};
+  const mailStatus = sp.mail || '';
   const supabase = await createClient();
 
   const { data: avtal } = await supabase
@@ -59,11 +61,29 @@ export default async function AvtalDetaljPage(props: { params: Promise<{ id: str
       </div>
 
       <div className="space-y-6 max-w-3xl">
+        {mailStatus === 'ok' && (
+          <div className="border border-positive/30 bg-positive/5 rounded-sm px-5 py-4 text-sm">
+            Avtalet är mailat till {detaljer.kund_email || 'kunden'}.
+          </div>
+        )}
+        {mailStatus === 'ingen_adress' && (
+          <div className="border border-warn/40 bg-warn/5 rounded-sm px-5 py-4 text-sm">
+            Kunden saknar mejladress, så inget mail gick iväg. Lägg in adressen på kundkortet, eller skicka länken nedan manuellt.
+          </div>
+        )}
+        {mailStatus === 'fel' && (
+          <div className="border border-danger/40 bg-danger/5 rounded-sm px-5 py-4 text-sm">
+            Mailet kunde inte skickas. Avtalet är markerat som skickat, men du behöver skicka länken nedan manuellt.
+          </div>
+        )}
+
         {avtal.status === 'utkast' && (
           <div className="bg-white border border-line-soft rounded-sm p-7">
             <div className="eyebrow mb-3">Klart att skicka</div>
             <p className="text-sm text-ink-muted mb-5">
-              Klicka på Skicka för att markera avtalet som skickat och få en länk att skicka till kunden via mail.
+              {k && k.email
+                ? `Avtalet mailas direkt till ${k.email} med en länk där kunden läser igenom och signerar med sitt namn.`
+                : 'Kunden saknar mejladress, så du får en länk att skicka manuellt. Lägg in en adress på kundkortet om du vill att avtalet mailas automatiskt.'}
             </p>
             <form action={skickaAvtal} className="flex justify-end">
               <input type="hidden" name="id" value={avtal.id} />
