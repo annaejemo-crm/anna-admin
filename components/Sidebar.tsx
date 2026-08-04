@@ -20,6 +20,7 @@ const NAV = [
       { href: '/admin/mail', label: 'Mailmallar' },
       { href: '/admin/leads', label: 'Guideleads' },
       { href: '/admin/avtal', label: 'Avtal & signering' },
+      { href: '/admin/avtal/mallar', label: 'Avtalsmallar' },
       { href: '/admin/ekonomi', label: 'Ekonomi' },
       { href: '/admin/korjournal', label: 'Körjournal' },
       { href: '/admin/traktamente', label: 'Traktamente' },
@@ -60,10 +61,17 @@ export function Sidebar() {
             {section.title}
           </div>
           {section.items.map((item) => {
+            // Avtal och Avtalsmallar delar prefix, sa markera den langsta
+            // traffen i stallet for bada samtidigt.
+            const langstaTraff = NAV
+              .flatMap((s) => s.items.map((i) => i.href))
+              .filter((href) => href !== '/admin' && pathname.startsWith(href))
+              .sort((a, b) => b.length - a.length)[0];
+
             const isActive =
               item.href === '/admin'
                 ? pathname === '/admin'
-                : pathname.startsWith(item.href);
+                : langstaTraff === item.href;
 
             return (
               <Link
