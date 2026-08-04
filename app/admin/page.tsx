@@ -98,6 +98,19 @@ export default async function DashboardPage() {
     return b.kund?.email;
   });
 
+  /* Kommande bokningar som saknar avtal. Ligger utanfor sjudagarsfonstret
+     ovan, annars syns paminnelsen bara veckan innan fotograferingen. */
+  const { data: kommandeRaw } = await supabase
+    .from('bokningar')
+    .select('id, datum, plats, kund_id, status, kund:kunder(fornamn, efternamn, foretagsnamn), fotograferingstyp:fotograferingstyper(namn), avtal(status)')
+    .gte('datum', idag)
+    .order('datum', { ascending: true })
+    .limit(50);
+
+  const utanAvtal = ((kommandeRaw || []) as any[]).filter(function(b: any) {
+    return b.status !== 'avbokad' && harledAvtalStatus(b) === 'inget';
+  });
+
   /* Bildpaket-lista för inline-val på pågående-tabellen */
   const { data: paketLista } = await supabase
     .from('bildpaket')
@@ -178,6 +191,49 @@ export default async function DashboardPage() {
           )}
         </div>
       </section>
+
+      {utanAvtal.length > 0 && (
+        <section className="mb-12">
+          <h2 className="text-2xl font-serif mb-1">Avtal saknas</h2>
+          <p className="text-ink-muted text-[13px] mb-5">
+            Kommande bokningar utan avtal. När du skickar avtalet mailas det direkt till kunden med en länk för signering.
+          </p>
+          <div className="bg-white border border-line-soft rounded-sm overflow-hidden">
+            <table className="w-full">
+              <thead>
+                <tr>
+                  <Th>Datum</Th><Th>Kund</Th><Th>Typ</Th><Th>Plats</Th><Th />
+                </tr>
+              </thead>
+              <tbody>
+                {utanAvtal.map(function(b: any) {
+                  const namn = b.kund?.foretagsnamn || `${b.kund?.fornamn || ''} ${b.kund?.efternamn || ''}`.trim();
+                  return (
+                    <tr key={b.id} className="border-b border-line-soft last:border-0 hover:bg-bg">
+                      <Td className="font-mono text-[12px] text-ink-muted whitespace-nowrap">{formatDate(b.datum)}</Td>
+                      <Td className="font-serif text-[17px]">
+                        <Link href={`/admin/kunder/${b.kund_id}`}>{namn}</Link>
+                      </Td>
+                      <Td>{b.fotograferingstyp?.namn || '–'}</Td>
+                      <Td>{b.plats || '–'}</Td>
+                      <Td>
+                        <div className="flex justify-end">
+                          <Link
+                            href={`/admin/bokningar/${b.id}/avtal`}
+                            className="text-[11px] px-2.5 py-1 border border-line-soft rounded-sm hover:border-ink hover:bg-bg whitespace-nowrap"
+                          >
+                            Skapa avtal
+                          </Link>
+                        </div>
+                      </Td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       {pagaende.length > 0 && (
         <section className="mb-12">
