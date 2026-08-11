@@ -5,6 +5,9 @@ import Link from 'next/link';
 
 const MONTH_NAMES = ['januari', 'februari', 'mars', 'april', 'maj', 'juni', 'juli', 'augusti', 'september', 'oktober', 'november', 'december'];
 
+// Systemet borjar 2026, tidigare ar visas inte.
+const AR_START = 2026;
+
 function formatDate(d: string): string {
   if (!d) return '';
   const dt = new Date(d + 'T00:00:00');
@@ -15,7 +18,12 @@ export default async function TraktamentePage(props: { searchParams?: Promise<{ 
   const supabase = await createClient();
   const sp = props.searchParams ? await props.searchParams : {};
   const aktuelltAr = new Date().getFullYear();
-  const valtAr = sp.ar ? parseInt(sp.ar, 10) : aktuelltAr;
+  const onskatAr = sp.ar ? parseInt(sp.ar, 10) : aktuelltAr;
+  const valtAr = Number.isFinite(onskatAr) && onskatAr >= AR_START ? onskatAr : Math.max(aktuelltAr, AR_START);
+
+  // Aren genereras i stallet for att skrivas in i koden.
+  const arLista: number[] = [];
+  for (let a = AR_START; a <= Math.max(aktuelltAr, valtAr); a++) arLista.push(a);
   const editingId = sp.edit || null;
 
   let editingPost: Traktamentepost | null = null;
@@ -93,9 +101,9 @@ export default async function TraktamentePage(props: { searchParams?: Promise<{ 
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
           <span className="font-mono text-[10px] tracking-[0.16em] uppercase text-ink-faint">År:</span>
-          <YearPill ar={2026} aktiv={valtAr === 2026} aktuellt={aktuelltAr === 2026} />
-          <YearPill ar={2025} aktiv={valtAr === 2025} aktuellt={aktuelltAr === 2025} />
-          <YearPill ar={2024} aktiv={valtAr === 2024} aktuellt={aktuelltAr === 2024} />
+          {arLista.map(function(a) {
+            return <YearPill key={a} ar={a} aktiv={valtAr === a} aktuellt={aktuelltAr === a} />;
+          })}
         </div>
         <div className="text-sm text-ink-muted">
           Året totalt: <strong className="text-ink font-medium">{aretBrutto.toLocaleString('sv-SE')} kr</strong>
