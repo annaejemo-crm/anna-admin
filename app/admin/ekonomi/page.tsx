@@ -31,6 +31,10 @@ type TypStat = { count: number; total: number };
 
 const MANADER = ['jan','feb','mar','apr','maj','jun','jul','aug','sep','okt','nov','dec'];
 
+// Systemet borjar 2026. Tidigare ar visas inte, och nya ar plockas fram
+// ur bokningarna sa 2027 dyker upp av sig sjalvt vid arsskiftet.
+const AR_START = 2026;
+
 const TYP_FARGER: Record<string, string> = {
   'Gravid': 'bg-accent',
   'Nyfödd': 'bg-sage',
@@ -44,7 +48,9 @@ const TYP_FARGER: Record<string, string> = {
 export default async function EkonomiPage(props: { searchParams?: Promise<{ ar?: string }> }) {
   const supabase = await createClient();
   const sp = props.searchParams ? await props.searchParams : {};
-  const valtAr = sp.ar ? parseInt(sp.ar, 10) : new Date().getFullYear();
+  const nuAr = new Date().getFullYear();
+  const onskatAr = sp.ar ? parseInt(sp.ar, 10) : nuAr;
+  const valtAr = Number.isFinite(onskatAr) && onskatAr >= AR_START ? onskatAr : Math.max(nuAr, AR_START);
 
   const { data: bokningarRaw } = await supabase
     .from('bokningar')
@@ -103,10 +109,20 @@ export default async function EkonomiPage(props: { searchParams?: Promise<{ ar?:
     return { ar: ar, total: total, paid: paid, count: count, foretag: foretag, privat: privat, manader: manader };
   }
 
-  const stat2024 = statsFor(2024);
-  const stat2025 = statsFor(2025);
-  const stat2026 = statsFor(2026);
-  const valtStat = valtAr === 2024 ? stat2024 : valtAr === 2025 ? stat2025 : stat2026;
+  const arSet = new Set<number>();
+  for (let i = 0; i < bokningar.length; i++) {
+    const b = bokningar[i];
+    if (!b.datum || b.status === 'avbokad') continue;
+    const y = new Date(b.datum).getFullYear();
+    if (y >= AR_START) arSet.add(y);
+  }
+  arSet.add(Math.max(nuAr, AR_START));
+  arSet.add(valtAr);
+  const arLista = Array.from(arSet).sort(function(a, b) { return a - b; });
+
+  const statPerAr = arLista.map(statsFor);
+  const valtIndex = arLista.indexOf(valtAr);
+  const valtStat = valtIndex >= 0 ? statPerAr[valtIndex] : statsFor(valtAr);
 
   const typStats: Record<string, TypStat> = {};
   for (let i = 0; i < bokningar.length; i++) {
@@ -183,9 +199,9 @@ export default async function EkonomiPage(props: { searchParams?: Promise<{ ar?:
           <h1 className="font-serif text-[42px] font-light leading-tight">Ekonomi</h1>
         </div>
         <div className="flex gap-1.5">
-          <YearPill ar={2024} aktiv={valtAr === 2024} />
-          <YearPill ar={2025} aktiv={valtAr === 2025} />
-          <YearPill ar={2026} aktiv={valtAr === 2026} />
+          {arLista.map(function(a) {
+            return <YearPill key={a} ar={a} aktiv={valtAr === a} />;
+          })}
         </div>
       </div>
 
@@ -196,14 +212,19 @@ export default async function EkonomiPage(props: { searchParams?: Promise<{ ar?:
         <Kpi label="Snittpris" value={`${snitt.toLocaleString('sv-SE')} kr`} sub="per bokning" />
       </div>
 
-      <div className="mb-12">
-        <div className="eyebrow mb-4">Årsjämförelse</div>
-        <div className="grid grid-cols-3 gap-6">
-          <YearCard stat={stat2024} />
-          <YearCard stat={stat2025} />
-          <YearCard stat={stat2026} />
+      {arLista.length > 1 && (
+        <div className="mb-12">
+          <div className="eyebrow mb-4">Årsjämförelse</div>
+          <div
+            className="grid gap-6"
+            style={{ gridTemplateColumns: `repeat(${Math.min(arLista.length, 3)}, minmax(0, 1fr))` }}
+          >
+            {statPerAr.map(function(s) {
+              return <YearCard key={s.ar} stat={s} />;
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="mb-12">
         <div className="flex justify-between items-end mb-4">
@@ -383,45 +404,6 @@ function MonthCategoryChart(props: { manadTyp: Record<number, Record<string, num
                     />
                   );
                 })}
-              </div>
-              <div className="text-[10px] text-ink-faint mt-1.5">{namn}</div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function CompareChart(props: { stat2024: ArStat; stat2025: ArStat; stat2026: ArStat }) {
-  let max = 0;
-  const alla = [props.stat2024, props.stat2025, props.stat2026];
-  for (let a = 0; a < alla.length; a++) {
-    for (let i = 0; i < 12; i++) {
-      if (alla[a].manader[i].total > max) max = alla[a].manader[i].total;
-    }
-  }
-  return (
-    <div className="bg-white border border-line-soft rounded-sm p-6">
-      <div className="flex gap-6 mb-5 text-xs">
-        <Legend color="bg-ink-faint" label="2024" />
-        <Legend color="bg-sage" label="2025" />
-        <Legend color="bg-accent" label="2026" />
-      </div>
-      <div className="flex items-end gap-2 h-48">
-        {MANADER.map(function(namn, m) {
-          const v24 = props.stat2024.manader[m].total;
-          const v25 = props.stat2025.manader[m].total;
-          const v26 = props.stat2026.manader[m].total;
-          const h24 = max > 0 ? (v24 / max) * 100 : 0;
-          const h25 = max > 0 ? (v25 / max) * 100 : 0;
-          const h26 = max > 0 ? (v26 / max) * 100 : 0;
-          return (
-            <div key={m} className="flex-1 flex flex-col items-center">
-              <div className="flex items-end gap-0.5 w-full h-full justify-center">
-                <div className="w-1/3 bg-ink-faint rounded-t-sm" style={{ height: `${h24}%`, minHeight: v24 > 0 ? '2px' : '0' }} title={`2024: ${v24.toLocaleString('sv-SE')} kr`} />
-                <div className="w-1/3 bg-sage rounded-t-sm" style={{ height: `${h25}%`, minHeight: v25 > 0 ? '2px' : '0' }} title={`2025: ${v25.toLocaleString('sv-SE')} kr`} />
-                <div className="w-1/3 bg-accent rounded-t-sm" style={{ height: `${h26}%`, minHeight: v26 > 0 ? '2px' : '0' }} title={`2026: ${v26.toLocaleString('sv-SE')} kr`} />
               </div>
               <div className="text-[10px] text-ink-faint mt-1.5">{namn}</div>
             </div>
