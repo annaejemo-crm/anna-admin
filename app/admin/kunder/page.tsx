@@ -59,7 +59,7 @@ export default async function KunderPage(props: { searchParams?: Promise<{ ar?: 
           <div className="eyebrow mb-1.5">{bokningar.length} bokningar för {valtAr}</div>
           <h1 className="font-serif text-[42px] font-light leading-tight">Kunder & bokningar</h1>
         </div>
-        <Link href="/admin/kunder/ny" className="btn">+ Ny bokning</Link>
+        <Link href="/admin/bokningar/ny" className="btn">+ Ny bokning</Link>
       </div>
 
       <div className="flex items-center justify-between mb-8">
