@@ -41,6 +41,13 @@ export const STATUS_LABELS: Record<StatusKod, string> = {
 export type AvtalStatusKort = 'inget' | 'skickat' | 'signerat';
 
 /**
+ * Recensionsforfragan hanteras i CRM:et forst fran och med detta datum.
+ * Kunder som blev klara tidigare har Anna redan mejlat manuellt utanfor
+ * systemet, sa de ska aldrig dyka upp i listan igen.
+ */
+export const RECENSION_FRAN = '2026-08-01';
+
+/**
  * Plockar ut avtalsstatus från en boknings relaterade avtal.
  * Returnerar 'signerat' om något avtal är signat, 'skickat' om något är skickat,
  * annars 'inget'.
