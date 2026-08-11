@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import Link from 'next/link';
 import { skapaBokning } from '../actions';
 import { PlatsValjare, PlatsOption } from '@/components/PlatsValjare';
@@ -30,8 +30,194 @@ export function NyBokningForm(props: { kunder: KundOption[]; typer: { id: string
   const valdKundObj = props.kunder.find(function(k) { return k.id === valdKund; });
   const arForetagskund = kundLage === 'ny' ? nyArForetagskund : !!valdKundObj?.arForetagskund;
 
+  const formRef = useRef<HTMLFormElement>(null);
+  const [forfragan, setForfragan] = useState('');
+  const [ifyllt, setIfyllt] = useState<string[]>([]);
+  const [parseFel, setParseFel] = useState('');
+
+  /**
+   * Laser in ett mejl fran bokningsformularet och fyller i falten.
+   * Formatet ar rader med "Etikett: varde". Rader utan etikett raknas som
+   * fortsattning pa foregaende falt, sa langa meddelanden foljer med.
+   * Allt efter en rad med tre bindestreck ar teknisk metadata fran formularet.
+   */
+  function fyllFranForfragan() {
+    const form = formRef.current;
+    if (!form) return;
+
+    const text = forfragan.trim();
+    if (!text) {
+      setParseFel('Klistra in mejlet först.');
+      setIfyllt([]);
+      return;
+    }
+
+    const delar = text.split(/^[ \t]*-{3,}[ \t]*$/m);
+    const huvud = delar[0] || '';
+    const metadata = delar.slice(1).join('\n');
+
+    const falt: Record<string, string> = {};
+    let aktuell = '';
+    const rader = huvud.split(/\r?\n/);
+    for (let i = 0; i < rader.length; i++) {
+      const rad = rader[i];
+      const träff = rad.match(/^\s*([^:]{2,40}?)\s*:\s*(.*)$/);
+      if (träff) {
+        aktuell = träff[1].toLowerCase().trim();
+        falt[aktuell] = träff[2].trim();
+      } else if (aktuell && rad.trim()) {
+        falt[aktuell] = (falt[aktuell] ? falt[aktuell] + '\n' : '') + rad.trim();
+      }
+    }
+
+    function hamta(nycklar: string[]): string {
+      const alla = Object.keys(falt);
+      for (let i = 0; i < nycklar.length; i++) {
+        for (let j = 0; j < alla.length; j++) {
+          if (alla[j] === nycklar[i]) return (falt[alla[j]] || '').trim();
+        }
+      }
+      for (let i = 0; i < nycklar.length; i++) {
+        for (let j = 0; j < alla.length; j++) {
+          if (alla[j].indexOf(nycklar[i]) !== -1) return (falt[alla[j]] || '').trim();
+        }
+      }
+      return '';
+    }
+
+    function satt(faltnamn: string, varde: string): boolean {
+      if (!varde) return false;
+      const el = form!.elements.namedItem(faltnamn) as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | null;
+      if (!el || !('value' in el)) return false;
+      const proto = el instanceof HTMLTextAreaElement
+        ? HTMLTextAreaElement.prototype
+        : el instanceof HTMLSelectElement
+          ? HTMLSelectElement.prototype
+          : HTMLInputElement.prototype;
+      const beskrivning = Object.getOwnPropertyDescriptor(proto, 'value');
+      if (beskrivning && beskrivning.set) beskrivning.set.call(el, varde);
+      else (el as any).value = varde;
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+      return true;
+    }
+
+    // Namn kan komma som ett falt eller uppdelat
+    let fornamn = hamta(['förnamn', 'fornamn']);
+    let efternamn = hamta(['efternamn']);
+    if (!fornamn) {
+      const heltNamn = hamta(['namn', 'ditt namn', 'name']);
+      if (heltNamn) {
+        const bitar = heltNamn.split(/\s+/).filter(Boolean);
+        if (bitar.length === 1) {
+          fornamn = bitar[0];
+        } else if (bitar.length > 1) {
+          efternamn = efternamn || bitar[bitar.length - 1];
+          fornamn = bitar.slice(0, bitar.length - 1).join(' ');
+        }
+      }
+    }
+
+    const email = hamta(['e-post', 'epost', 'email', 'e-mail', 'mejl', 'mail']);
+    const telefon = hamta(['telefon', 'telefonnummer', 'mobil', 'tel']);
+    const hurHittade = hamta(['vart hittade du mig?', 'vart hittade du mig', 'hur hittade du mig', 'hittade du mig', 'hur hittade']);
+    const typText = hamta(['fotografering', 'typ av fotografering', 'vilken fotografering']);
+    const foretag = hamta(['företagsnamn', 'företag']);
+
+    const adress = hamta(['adress', 'gatuadress']);
+    const postnummer = hamta(['postnummer', 'postnr']);
+    const ort = hamta(['ort', 'stad']);
+    const bf = hamta(['när har du bf?', 'när har du bf', 'bf', 'beräknat födelsedatum']);
+    const meddelande = hamta(['meddelande', 'övrigt', 'kommentar', 'fråga']);
+
+    const gjorda: string[] = [];
+    if (kundLage !== 'ny') setKundLage('ny');
+
+    if (satt('fornamn', fornamn)) gjorda.push('förnamn');
+    if (satt('efternamn', efternamn)) gjorda.push('efternamn');
+    if (satt('foretagsnamn', foretag)) gjorda.push('företagsnamn');
+    if (satt('email', email)) gjorda.push('email');
+    if (satt('telefon', telefon)) gjorda.push('telefon');
+    if (satt('hur_hittade', hurHittade)) gjorda.push('hur hittade');
+
+    // Fotograferingstyp: matcha mot hennes egna typer, sa
+    // Gravidfotografering hittar typen Gravid.
+    if (typText) {
+      const jamfor = typText.toLowerCase();
+      const traff = props.typer.find(function(t) {
+        const n = String(t.namn || '').toLowerCase();
+        return n.length > 2 && (jamfor.indexOf(n) !== -1 || n.indexOf(jamfor) !== -1);
+      });
+      if (traff && satt('fotograferingstyp_id', traff.id)) gjorda.push('fotograferingstyp');
+    }
+
+    // Kalla: samma svar som hur hittade, men maste matcha ett av valen
+    if (hurHittade) {
+      const val = ['Instagram', 'Google', 'Rekommendation', 'Återkommande kund', 'Mässa', 'Hemsida'];
+      const jamfor = hurHittade.toLowerCase();
+      const traff = val.find(function(v) { return jamfor.indexOf(v.toLowerCase()) !== -1; });
+      if (satt('kalla', traff || 'Annat')) gjorda.push('källa');
+    }
+
+    // Resten samlas i den interna anteckningen
+    const anteckning: string[] = [];
+    if (adress) anteckning.push('Adress: ' + adress + (postnummer ? ', ' + postnummer : '') + (ort ? ' ' + ort : ''));
+    else if (postnummer) anteckning.push('Postnummer: ' + postnummer);
+    if (bf) anteckning.push('BF: ' + bf);
+    if (meddelande) anteckning.push('Meddelande: ' + meddelande);
+
+    const metaDatum = (metadata.match(/^\s*Datum:\s*(.+)$/m) || [])[1];
+    const metaTid = (metadata.match(/^\s*Tid:\s*(.+)$/m) || [])[1];
+    if (metaDatum) anteckning.push('Förfrågan inkom ' + metaDatum.trim() + (metaTid ? ' kl ' + metaTid.trim() : ''));
+
+    if (anteckning.length > 0 && satt('intern_anteckning', anteckning.join('\n'))) {
+      gjorda.push('intern anteckning');
+    }
+
+    if (gjorda.length === 0) {
+      setParseFel('Hittade inga fält att fylla i. Kolla att texten har rader som Namn: och E-post:.');
+      setIfyllt([]);
+    } else {
+      setParseFel('');
+      setIfyllt(gjorda);
+    }
+  }
+
   return (
-    <form action={skapaBokning} className="space-y-8 max-w-3xl">
+    <form ref={formRef} action={skapaBokning} className="space-y-8 max-w-3xl">
+      <Section title="Klistra in förfrågan">
+        <p className="text-sm text-ink-muted mb-3">
+          Klistra in mejlet från bokningsformuläret så fylls namn, kontaktuppgifter, typ och källa i åt dig. Datum, tid, plats och pris fyller du i själv.
+        </p>
+        <textarea
+          value={forfragan}
+          onChange={function(e) { setForfragan(e.target.value); }}
+          rows={6}
+          placeholder={'Namn: Anna Falk\nE-post: anna@falx.se\nFotografering: Gravidfotografering\nVart hittade du mig?: Instagram\nMeddelande: ...'}
+          className={`${inputStyle} resize-y font-mono text-[12.5px] leading-relaxed`}
+        />
+        <div className="flex items-center gap-4 mt-3 flex-wrap">
+          <button
+            type="button"
+            onClick={fyllFranForfragan}
+            className="px-4 py-2 bg-ink text-bg text-sm rounded-sm hover:bg-ink/90 transition-colors"
+          >
+            Fyll i fälten
+          </button>
+          <button
+            type="button"
+            onClick={function() { setForfragan(''); setIfyllt([]); setParseFel(''); }}
+            className="text-sm text-ink-muted hover:text-ink"
+          >
+            Rensa
+          </button>
+          {ifyllt.length > 0 && (
+            <span className="text-[12.5px] text-positive">Fyllde i {ifyllt.join(', ')}.</span>
+          )}
+          {parseFel && <span className="text-[12.5px] text-accent">{parseFel}</span>}
+        </div>
+      </Section>
+
       <Section title="Kund">
         <div className="flex gap-3 mb-5">
           <LageKnapp aktiv={kundLage === 'ny'} onClick={function() { setKundLage('ny'); }} label="Ny kund" />
