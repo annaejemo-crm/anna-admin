@@ -134,7 +134,7 @@ export default async function DashboardPage() {
             {greeting()}
           </h1>
         </div>
-        <Link href="/admin/kunder/ny" className="btn">+ Ny bokning</Link>
+        <Link href="/admin/bokningar/ny" className="btn">+ Ny bokning</Link>
       </div>
 
       <div className="grid grid-cols-4 gap-6 mb-12">
