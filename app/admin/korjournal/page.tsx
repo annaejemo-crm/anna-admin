@@ -6,6 +6,9 @@ const BILAR = ['TMX76G', 'UDD408'] as const;
 type BilKod = typeof BILAR[number];
 
 const MILERSATTNING_KR_PER_MIL = 25;
+
+// Systemet borjar 2026, tidigare ar visas inte.
+const AR_START = 2026;
 const MONTH_NAMES = ['januari', 'februari', 'mars', 'april', 'maj', 'juni', 'juli', 'augusti', 'september', 'oktober', 'november', 'december'];
 
 export default async function KorjournalPage(props: { searchParams?: Promise<{ ar?: string; bil?: string }> }) {
@@ -15,8 +18,14 @@ export default async function KorjournalPage(props: { searchParams?: Promise<{ a
   const supabase = await createClient();
   const sp = props.searchParams ? await props.searchParams : {};
   const aktuelltAr = new Date().getFullYear();
-  const valtAr = sp.ar ? parseInt(sp.ar, 10) : aktuelltAr;
+  const onskatAr = sp.ar ? parseInt(sp.ar, 10) : aktuelltAr;
+  const valtAr = Number.isFinite(onskatAr) && onskatAr >= AR_START ? onskatAr : Math.max(aktuelltAr, AR_START);
   const valdBil: BilKod = (BILAR as readonly string[]).includes(sp.bil || '') ? (sp.bil as BilKod) : 'TMX76G';
+
+  // Aren genereras i stallet for att skrivas in i koden, sa 2027 dyker upp
+  // av sig sjalvt vid arsskiftet.
+  const arLista: number[] = [];
+  for (let a = AR_START; a <= Math.max(aktuelltAr, valtAr); a++) arLista.push(a);
 
   const start = `${valtAr}-01-01`;
   const slut = `${valtAr}-12-31`;
@@ -93,9 +102,9 @@ export default async function KorjournalPage(props: { searchParams?: Promise<{ a
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
           <span className="font-mono text-[10px] tracking-[0.16em] uppercase text-ink-faint">År:</span>
-          <YearPill ar={2026} aktiv={valtAr === 2026} aktuellt={aktuelltAr === 2026} bil={valdBil} />
-          <YearPill ar={2025} aktiv={valtAr === 2025} aktuellt={aktuelltAr === 2025} bil={valdBil} />
-          <YearPill ar={2024} aktiv={valtAr === 2024} aktuellt={aktuelltAr === 2024} bil={valdBil} />
+          {arLista.map(function(a) {
+            return <YearPill key={a} ar={a} aktiv={valtAr === a} aktuellt={aktuelltAr === a} bil={valdBil} />;
+          })}
           <span className="font-mono text-[10px] tracking-[0.16em] uppercase text-ink-faint ml-4">Bil:</span>
           <BilPill bil="TMX76G" aktiv={valdBil === 'TMX76G'} ar={valtAr} />
           <BilPill bil="UDD408" aktiv={valdBil === 'UDD408'} ar={valtAr} />
