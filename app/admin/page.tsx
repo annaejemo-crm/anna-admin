@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { StatusPill } from '@/components/StatusPill';
 import type { DashboardSummary, BokningExpanderad } from '@/lib/types';
-import { harledBokningStatus, harledAvtalStatus } from '@/lib/types';
+import { harledBokningStatus, harledAvtalStatus, RECENSION_FRAN } from '@/lib/types';
 import { AvtalPill } from '@/components/AvtalPill';
 import { gaVidare, skickaPaketPaminnelse, skickaRecensionsmail, skippaRecensionsmail } from './bokningar/actions';
 import { setBildpaket, togglePaid } from './kunder/actions';
@@ -91,6 +91,7 @@ export default async function DashboardPage() {
     .eq('bokning_klar', true)
     .is('recension_mail_skickat_at', null)
     .not('skippa_recensionsmail', 'is', true)
+    .gte('bokning_klar_at', RECENSION_FRAN)
     .order('bokning_klar_at', { ascending: false })
     .limit(30);
 
