@@ -2,10 +2,13 @@ import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
 import { StatusPill } from '@/components/StatusPill';
 import { AvtalPill } from '@/components/AvtalPill';
-import { harledBokningStatus, harledAvtalStatus } from '@/lib/types';
+import { harledBokningStatus, harledAvtalStatus, RECENSION_FRAN } from '@/lib/types';
 import { gaVidare, skickaRecensionsmail } from '../bokningar/actions';
 
 const MONTH_NAMES = ['januari', 'februari', 'mars', 'april', 'maj', 'juni', 'juli', 'augusti', 'september', 'oktober', 'november', 'december'];
+
+// Systemet borjar 2026, tidigare ar visas inte.
+const AR_START = 2026;
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return '–';
@@ -17,7 +20,13 @@ export default async function KunderPage(props: { searchParams?: Promise<{ ar?: 
   const supabase = await createClient();
   const sp = props.searchParams ? await props.searchParams : {};
   const aktuelltAr = new Date().getFullYear();
-  const valtAr = sp.ar ? parseInt(sp.ar, 10) : aktuelltAr;
+  const onskatAr = sp.ar ? parseInt(sp.ar, 10) : aktuelltAr;
+  const valtAr = Number.isFinite(onskatAr) && onskatAr >= AR_START ? onskatAr : Math.max(aktuelltAr, AR_START);
+
+  // Aren genereras i stallet for att skrivas in i koden, sa 2027 dyker upp
+  // av sig sjalvt vid arsskiftet.
+  const arLista: number[] = [];
+  for (let a = AR_START; a <= Math.max(aktuelltAr, valtAr); a++) arLista.push(a);
 
   const start = `${valtAr}-01-01`;
   const slut = `${valtAr}-12-31`;
@@ -65,9 +74,9 @@ export default async function KunderPage(props: { searchParams?: Promise<{ ar?: 
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
           <span className="font-mono text-[10px] tracking-[0.16em] uppercase text-ink-faint">År:</span>
-          <YearPill ar={2026} aktiv={valtAr === 2026} aktuellt={aktuelltAr === 2026} />
-          <YearPill ar={2025} aktiv={valtAr === 2025} aktuellt={aktuelltAr === 2025} />
-          <YearPill ar={2024} aktiv={valtAr === 2024} aktuellt={aktuelltAr === 2024} />
+          {arLista.map(function(a) {
+            return <YearPill key={a} ar={a} aktiv={valtAr === a} aktuellt={aktuelltAr === a} />;
+          })}
         </div>
         <div className="text-sm text-ink-muted">
           Året totalt: <strong className="text-ink font-medium">{aretTotalt.toLocaleString('sv-SE')} kr</strong>
@@ -153,7 +162,7 @@ export default async function KunderPage(props: { searchParams?: Promise<{ ar?: 
                             ) : (
                               <StatusPill status={st} />
                             )}
-                            {b.bokning_klar && b.kund?.email && !b.recension_mail_skickat_at && !b.skippa_recensionsmail && (
+                            {b.bokning_klar && b.kund?.email && !b.recension_mail_skickat_at && !b.skippa_recensionsmail && b.bokning_klar_at && b.bokning_klar_at >= RECENSION_FRAN && (
                               <form action={skickaRecensionsmail} className="inline">
                                 <input type="hidden" name="id" value={b.id} />
                                 <input type="hidden" name="kund_id" value={b.kund_id} />
