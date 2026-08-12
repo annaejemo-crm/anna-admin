@@ -14,11 +14,11 @@ type Mall = {
 
 const SAMTYCKE_KLAUSULER = function (medRabatt: boolean): Klausul[] {
   const ersattning = medRabatt
-    ? 'Som tack för samtycket får den avbildade 30 procent rabatt på en kommande fotografering. Ingen ytterligare ersättning utgår, oavsett hur många licenser som tecknas.'
-    : 'Samtycket ges utan ekonomisk ersättning. Ingen ersättning utgår, oavsett hur många licenser som tecknas.';
+    ? 'Som tack för samtycket får den avbildade 30 procent rabatt på en kommande fotografering. Utöver rabatten utgår ingen ytterligare ersättning.'
+    : '';
   return [
     { titel: 'Bilder som omfattas', brod: 'Samtycket gäller följande bilder från fotograferingen den [datum]: [bildnummer eller länk till galleri]. Inga andra bilder omfattas. Samtycket gäller endast bilder där den avbildade själv förekommer.' },
-    { titel: 'Vad samtycket innebär', brod: 'Den avbildade ger fotografen rätt att upplåta bilderna till företag och organisationer för kommersiell användning, till exempel marknadsföring och redaktionellt innehåll, på webbplatser, i sociala medier, i appar, i tryckt material och i annan media. Rätten gäller i hela världen och inkluderar sedvanlig bildbehandling som beskärning och retusch. Bilderna får inte förvanskas på ett sätt som är vilseledande eller kränkande.' },
+    { titel: 'Vad samtycket innebär', brod: 'Den avbildade ger fotografen rätt att upplåta bilderna till företag och organisationer för kommersiell användning, till exempel marknadsföring och redaktionellt innehåll, på webbplatser, i sociala medier, i appar, i tryckt material och i annan media. Bilderna får inte förvanskas på ett sätt som är vilseledande eller kränkande.' },
     { titel: 'Icke-exklusivitet', brod: 'Licensen är icke-exklusiv. Samma bild kan licensieras till flera företag som inte är direkta konkurrenter. Den avbildade har inte rätt till del av enskilda licensintäkter.' },
     { titel: 'Ersättning', brod: ersattning },
     { titel: 'Begränsningar och skydd', brod: 'Fotografen väljer licenstagare med omdöme och licensierar inte bilderna till sammanhang som är kränkande, diskriminerande, politiska, religiöst utpekande, vilseledande eller på annat sätt ägnade att skada den avbildade. Bilderna får inte användas så att det framstår som att den avbildade personligen förespråkar en produkt eller åsikt på ett missvisande sätt.' },
@@ -26,7 +26,7 @@ const SAMTYCKE_KLAUSULER = function (medRabatt: boolean): Klausul[] {
     { titel: 'Personuppgifter och GDPR', brod: 'Den rättsliga grunden för publicering där den avbildade är identifierbar är detta samtycke enligt dataskyddsförordningen. Fotografen är personuppgiftsansvarig. Den avbildade har rätt att få veta vilka licenser som tecknats, begära rättelse, och återkalla samtycket. Kontakt sker till kontakt@annaejemo.se.' },
     { titel: 'Minderåriga', brod: 'Om någon på bilderna är under 18 år krävs vårdnadshavares samtycke, som då undertecknar för barnets räkning.' },
     { titel: 'Upphovsrätt', brod: 'Fotografen innehar upphovsrätten till bilderna. Detta samtycke gäller den avbildades rätt till sin egen bild, inte upphovsrätten till fotografierna.' },
-  ];
+  ].filter(function (k) { return k.brod !== ''; });
 };
 
 const MALLAR: Record<string, Mall> = {
