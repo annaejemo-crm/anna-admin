@@ -144,6 +144,8 @@ export default async function AvtalDetaljPage(props: { params: Promise<{ id: str
               <dt className="text-[11px] uppercase tracking-wider text-ink-muted mb-0.5">Email</dt>
               <dd className="font-mono text-[12.5px]">{detaljer.kund_email || '—'}</dd>
             </div>
+            {!detaljer.typ && (
+              <>
             <div>
               <dt className="text-[11px] uppercase tracking-wider text-ink-muted mb-0.5">Datum & tid</dt>
               <dd className="font-mono text-[12.5px]">{detaljer.datum || '—'} {detaljer.tid || ''}</dd>
@@ -160,6 +162,8 @@ export default async function AvtalDetaljPage(props: { params: Promise<{ id: str
               <dt className="text-[11px] uppercase tracking-wider text-ink-muted mb-0.5">Bildpaket</dt>
               <dd>{detaljer.bildpaket_text || '—'}</dd>
             </div>
+              </>
+            )}
           </dl>
         </div>
 
