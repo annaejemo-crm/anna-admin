@@ -27,16 +27,21 @@ export default async function AvtalPage() {
 
   return (
     <>
-      <div className="mb-10 pb-6 border-b border-line">
-        <div className="eyebrow mb-1.5">Avtal & signering</div>
-        <h1 className="font-serif text-[42px] font-light leading-tight">Avtal</h1>
+      <div className="mb-10 pb-6 border-b border-line flex justify-between items-end">
+        <div>
+          <div className="eyebrow mb-1.5">Avtal & signering</div>
+          <h1 className="font-serif text-[42px] font-light leading-tight">Avtal</h1>
+        </div>
+        <Link href="/admin/avtal/nytt" className="px-5 py-2.5 bg-ink text-bg text-sm rounded-sm hover:bg-ink/90 transition-colors whitespace-nowrap">
+          Nytt avtal
+        </Link>
       </div>
 
       {avtal.length === 0 ? (
         <div className="bg-white border border-dashed border-line p-16 rounded-sm text-center text-ink-muted">
           <p className="font-serif text-xl mb-2 text-ink">Inga avtal än</p>
           <p className="text-sm">
-            Klicka på "Avtal" på en bokning för att skapa ditt första digitala avtal.
+            Klicka på Nytt avtal här ovanför, eller på "Avtal" på en bokning, för att skapa ditt första digitala avtal.
           </p>
         </div>
       ) : (
