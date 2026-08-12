@@ -4,6 +4,9 @@ import { createServiceClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
 import { createHash } from 'crypto';
+import { skickaMail } from '@/lib/mail';
+
+const APP_URL = 'https://anna-admin-five.vercel.app';
 
 export async function signera(formData: FormData) {
   const supabase = createServiceClient();
@@ -19,7 +22,7 @@ export async function signera(formData: FormData) {
 
   const { data: avtal } = await supabase
     .from('avtal')
-    .select('user_id, klausuler, detaljer, status, bokning:bokningar(fotograferingstyp:fotograferingstyper(namn))')
+    .select('user_id, slug, klausuler, detaljer, status, bokning:bokningar(fotograferingstyp:fotograferingstyper(namn))')
     .eq('id', avtal_id)
     .single();
 
@@ -75,6 +78,41 @@ export async function signera(formData: FormData) {
       await supabase.from('bokningar').update({
         status: 'signat',
       }).eq('id', bokning_id);
+    }
+
+    // Skicka kopia till mottagaren och en notis till Anna.
+    const det: any = avtal.detaljer || {};
+    const slug = (avtal as any).slug;
+    const lank = `${APP_URL}/avtal/${slug}`;
+    const rubrik = det.typ_label || 'Avtal';
+    const fnamn = String(det.kund_namn || '').trim().split(' ')[0] || 'hej';
+
+    if (det.kund_email) {
+      try {
+        await skickaMail({
+          till: det.kund_email,
+          amne: `Din kopia: ${rubrik.toLowerCase()} signerat`,
+          brodtext:
+            `Hej ${fnamn}!\n\n` +
+            `Tack, ditt ${rubrik.toLowerCase()} är nu signerat. Du kan läsa det när du vill här:\n\n` +
+            `${lank}\n\n` +
+            `Varma hälsningar,\nAnna`,
+        });
+      } catch (e) {
+        // Mejlfel ska inte stoppa signeringen.
+      }
+    }
+
+    try {
+      await skickaMail({
+        till: 'kontakt@annaejemo.se',
+        amne: `Avtal signerat: ${typed_name}`,
+        brodtext:
+          `${typed_name} har signerat sitt ${rubrik.toLowerCase()}.\n\n` +
+          `${lank}`,
+      });
+    } catch (e) {
+      // Notisfel ska inte stoppa signeringen.
     }
   }
 
