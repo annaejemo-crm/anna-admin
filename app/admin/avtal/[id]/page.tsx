@@ -83,7 +83,7 @@ export default async function AvtalDetaljPage(props: { params: Promise<{ id: str
             <p className="text-sm text-ink-muted mb-5">
               {k && k.email
                 ? `Avtalet mailas direkt till ${k.email} med en länk där kunden läser igenom och signerar med sitt namn.`
-                : 'Kunden saknar mejladress, så du får en länk att skicka manuellt. Lägg in en adress på kundkortet om du vill att avtalet mailas automatiskt.'}
+                : 'När du klickar Skicka avtal mejlas länken automatiskt till mottagaren om en adress finns på avtalet. Du får också en länk att kopiera och skicka själv.'}
             </p>
             <form action={skickaAvtal} className="flex justify-end">
               <input type="hidden" name="id" value={avtal.id} />
