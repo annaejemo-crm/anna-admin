@@ -24,7 +24,6 @@ const SAMTYCKE_KLAUSULER = function (medRabatt: boolean): Klausul[] {
     { titel: 'Begränsningar och skydd', brod: 'Fotografen väljer licenstagare med omdöme och licensierar inte bilderna till sammanhang som är kränkande, diskriminerande, politiska, religiöst utpekande, vilseledande eller på annat sätt ägnade att skada den avbildade. Bilderna får inte användas så att det framstår som att den avbildade personligen förespråkar en produkt eller åsikt på ett missvisande sätt.' },
     { titel: 'Giltighetstid och återkallelse', brod: 'Samtycket gäller tills vidare. Den avbildade kan när som helst återkalla sitt samtycke genom att mejla fotografen. Återkallelsen gäller nya licenser. Licenser som redan tecknats löper vidare enligt sina avtalstider, dock längst tolv månader efter återkallelsen.' },
     { titel: 'Personuppgifter och GDPR', brod: 'Den rättsliga grunden för publicering där den avbildade är identifierbar är detta samtycke enligt dataskyddsförordningen. Fotografen är personuppgiftsansvarig. Den avbildade har rätt att få veta vilka licenser som tecknats, begära rättelse, och återkalla samtycket. Kontakt sker till kontakt@annaejemo.se.' },
-    { titel: 'Minderåriga', brod: 'Om någon på bilderna är under 18 år krävs vårdnadshavares samtycke, som då undertecknar för barnets räkning.' },
     { titel: 'Upphovsrätt', brod: 'Fotografen innehar upphovsrätten till bilderna. Detta samtycke gäller den avbildades rätt till sin egen bild, inte upphovsrätten till fotografierna.' },
   ].filter(function (k) { return k.brod !== ''; });
 };
