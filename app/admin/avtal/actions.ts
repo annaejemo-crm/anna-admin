@@ -3,6 +3,14 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { skickaMail } from '@/lib/mail';
+
+const APP_URL = 'https://anna-admin-five.vercel.app';
+
+function fornamn(namn: string | null | undefined): string {
+  const n = String(namn || '').trim();
+  return n ? n.split(' ')[0] : 'hej';
+}
 
 function slug(): string {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
@@ -109,6 +117,32 @@ export async function skickaAvtal(formData: FormData) {
     await supabase.from('bokningar').update({
       status: 'avtal_skickat',
     }).eq('id', bokning_id);
+  }
+
+  // Mejla mottagaren signeringslänken automatiskt om det finns en adress.
+  const { data: avt } = await supabase
+    .from('avtal')
+    .select('slug, detaljer')
+    .eq('id', id)
+    .single();
+  const det: any = (avt && avt.detaljer) || {};
+  if (avt && det.kund_email) {
+    const lank = `${APP_URL}/avtal/${avt.slug}`;
+    const rubrik = det.typ_label || 'Avtal';
+    try {
+      await skickaMail({
+        till: det.kund_email,
+        amne: `${rubrik} från Fotograf Anna Ejemo`,
+        brodtext:
+          `Hej ${fornamn(det.kund_namn)}!\n\n` +
+          `Här är ditt ${rubrik.toLowerCase()} att läsa igenom och signera digitalt:\n\n` +
+          `${lank}\n\n` +
+          `Du fyller i ditt namn och godkänner längst ner på sidan. Hör av dig om du undrar över något.\n\n` +
+          `Varma hälsningar,\nAnna`,
+      });
+    } catch (e) {
+      // Mejlfel ska inte stoppa att avtalet markeras som skickat.
+    }
   }
 
   revalidatePath(`/admin/avtal/${id}`);
