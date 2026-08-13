@@ -99,7 +99,7 @@ export default async function AvtalDetaljPage(props: { params: Promise<{ id: str
           <div className="bg-white border border-line-soft rounded-sm p-7">
             <div className="eyebrow mb-3">Länk till kunden</div>
             <p className="text-sm text-ink-muted mb-4">
-              Skicka denna länk till {detaljer.kund_email || 'kunden'} via mail. Kunden öppnar länken, läser igenom och signerar med sitt namn.
+              Länken är mejlad till {detaljer.kund_email || 'kunden'}. Här har du den också, om du vill skicka den själv eller påminna senare.
             </p>
             <LankCopy slug={avtal.slug} />
             {avtal.skickat_at && (
