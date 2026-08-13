@@ -60,12 +60,20 @@ export default async function AvtalPage() {
               {avtal.map(function(a) {
                 const b: any = a.bokning;
                 const k = b && b.kund ? b.kund : null;
-                const namn = k ? (k.foretagsnamn || `${k.fornamn} ${k.efternamn || ''}`.trim()) : '—';
+                const det: any = a.detaljer || {};
+                /* Fristående avtal saknar bokning, då finns namnet i detaljer. */
+                const namn = k
+                  ? (k.foretagsnamn || `${k.fornamn} ${k.efternamn || ''}`.trim())
+                  : (det.kund_namn || '—');
+                const typLabel = det.typ_label || '';
                 const farg = STATUS_FARG[a.status] || STATUS_FARG.utkast;
                 const label = STATUS_LABEL[a.status] || a.status;
                 return (
                   <tr key={a.id} className="border-t border-line-soft hover:bg-bg-subtle/40">
-                    <td className="px-5 py-3.5 font-medium">{namn}</td>
+                    <td className="px-5 py-3.5">
+                      <div className="font-medium">{namn}</div>
+                      {typLabel && <div className="text-[11px] text-ink-muted mt-0.5">{typLabel}</div>}
+                    </td>
                     <td className="px-5 py-3.5 font-mono text-[12px] text-ink-muted">{b && b.datum ? b.datum : '—'}</td>
                     <td className="px-5 py-3.5 font-mono text-[12px] text-ink-muted">{a.created_at ? a.created_at.substring(0, 10) : ''}</td>
                     <td className="px-5 py-3.5">
