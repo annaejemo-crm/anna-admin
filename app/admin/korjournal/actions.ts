@@ -89,9 +89,15 @@ export async function skapaKorjournalpost(formData: FormData) {
   const plats_adress = String(formData.get('plats_adress') || '').trim() || null;
   const medfoljande = String(formData.get('medfoljande') || '').trim() || null;
 
+  // Km skrivs in enkel vag, precis som avstanden under Platser. Ar rutan
+  // Tur och retur ikryssad dubblas det innan det sparas, sa manuella resor
+  // rakans likadant som de som kommer automatiskt fran en bokning.
   const kmRaw = String(formData.get('antal_km') || '').replace(',', '.').trim();
   const antal_km_parsed = kmRaw ? parseFloat(kmRaw) : NaN;
-  const antal_km = Number.isNaN(antal_km_parsed) ? null : antal_km_parsed;
+  const turRetur = formData.get('tur_retur') === 'on';
+  const antal_km = Number.isNaN(antal_km_parsed)
+    ? null
+    : (turRetur ? antal_km_parsed * 2 : antal_km_parsed);
 
   const bil = String(formData.get('bil') || 'TMX76G').trim() || 'TMX76G';
 
