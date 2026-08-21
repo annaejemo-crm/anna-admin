@@ -76,7 +76,7 @@ export default async function KorjournalPage(props: { searchParams?: Promise<{ a
             <div className="eyebrow mb-1.5">Arbete</div>
             <h1 className="font-serif text-[42px] font-light leading-tight">Körjournal</h1>
             <p className="text-sm text-ink-muted mt-3 max-w-xl">
-              Resor fylls i automatiskt när en bokning markeras KLAR och har avstånd. Du kan också lägga till manuella resor nedan. Skicka filen till din revisor i slutet av månaden.
+              Resor fylls i automatiskt när en bokning markeras KLAR och har avstånd, och räknas då som tur och retur. Lägger du till en resa manuellt skriver du också avståndet enkel väg, så dubblas det åt dig. Skicka filen till din revisor i slutet av månaden.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -166,7 +166,7 @@ export default async function KorjournalPage(props: { searchParams?: Promise<{ a
       {/* Lägg till ny rad. Öppet direkt så det är som en excel-rad. */}
       <section className="bg-white border border-line-soft rounded-sm p-5 mb-8">
         <div className="eyebrow mb-3">Lägg till resa</div>
-        <form action={skapaKorjournalpost} className="grid grid-cols-[110px_1fr_1.2fr_1.2fr_1fr_80px_auto] gap-2 items-end">
+        <form action={skapaKorjournalpost} className="grid grid-cols-[110px_1fr_1.2fr_1.2fr_1fr_80px_auto_auto] gap-2 items-end">
           <input type="hidden" name="bil" value={valdBil} />
           <div>
             <label className="block text-[10px] uppercase tracking-wider text-ink-muted mb-1">Datum</label>
@@ -189,9 +189,13 @@ export default async function KorjournalPage(props: { searchParams?: Promise<{ a
             <input type="text" name="medfoljande" placeholder="Namn" className="w-full px-2 py-2 border border-line-soft rounded-sm text-sm" />
           </div>
           <div>
-            <label className="block text-[10px] uppercase tracking-wider text-ink-muted mb-1">Km</label>
+            <label className="block text-[10px] uppercase tracking-wider text-ink-muted mb-1">Km enkel väg</label>
             <input type="text" name="antal_km" inputMode="decimal" placeholder="0" className="w-full px-2 py-2 border border-line-soft rounded-sm text-sm" />
           </div>
+          <label className="flex items-center gap-2 h-[38px] whitespace-nowrap cursor-pointer" title="Skriv avståndet enkel väg, precis som under Platser. Är rutan ikryssad sparas dubbla sträckan.">
+            <input type="checkbox" name="tur_retur" defaultChecked className="w-4 h-4 accent-ink" />
+            <span className="text-[12px]">Tur och retur</span>
+          </label>
           <button type="submit" className="px-4 py-2 bg-ink text-bg text-sm rounded-sm">Spara</button>
         </form>
       </section>
