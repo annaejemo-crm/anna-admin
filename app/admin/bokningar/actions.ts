@@ -313,14 +313,40 @@ export async function skippaRecensionsmail(formData: FormData) {
 }
 
 const PAKETPAMINNELSE_AMNE = 'Påminnelse om dina bilder';
-const PAKETPAMINNELSE_BRODTEXT_BASE = `,
 
-Hoppas du fått chans att titta igenom galleriet. Ibland är det svårt att välja favoriter.
+const MANADER_LANGA = ['januari', 'februari', 'mars', 'april', 'maj', 'juni', 'juli', 'augusti', 'september', 'oktober', 'november', 'december'];
 
-Hör av dig när du landat i vilket bildpaket du vill ha, så ordnar jag med leverans av dina bilder.
+/**
+ * Gallerierna ligger uppe i tva manader fran att de skickades.
+ * Ar datumet kant skrivs det ut, annars beskrivs det i ord.
+ */
+function galleriMening(kundgalleriSkickatAt: string | null | undefined): string {
+  if (!kundgalleriSkickatAt) {
+    return 'Galleriet ligger uppe i två månader, säg till om du behöver längre tid så förlänger jag.';
+  }
+  const d = new Date(kundgalleriSkickatAt);
+  if (Number.isNaN(d.getTime())) {
+    return 'Galleriet ligger uppe i två månader, säg till om du behöver längre tid så förlänger jag.';
+  }
+  d.setMonth(d.getMonth() + 2);
+  const datum = `${d.getDate()} ${MANADER_LANGA[d.getMonth()]}`;
+  return `Galleriet ligger uppe till ${datum}, säg till om du behöver längre tid så förlänger jag.`;
+}
+
+function paketPaminnelseBrodtext(fornamn: string, kundgalleriSkickatAt: string | null | undefined): string {
+  return `Hej${fornamn ? ' ' + fornamn : ''},
+
+hoppas allt är bra hos er!
+
+Jag hör bara av mig om bilderna, ingen stress alls. ${galleriMening(kundgalleriSkickatAt)}
+
+Och om det känns svårt att välja, vilket det ofta är när man tycker om många, så plockar jag gärna ut mina favoriter åt er. Med ett mindre urval att utgå från brukar det bli mycket lättare att bestämma sig.
 
 Varma hälsningar
-Anna`;
+Anna Ejemo
+0723550799
+kontakt@annaejemo.se`;
+}
 
 /**
  * Skickar påminnelsemail manuellt till kunden om att välja bildpaket.
@@ -335,7 +361,7 @@ export async function skickaPaketPaminnelse(formData: FormData) {
 
   const { data: bokning } = await supabase
     .from('bokningar')
-    .select('id, kund_id')
+    .select('id, kund_id, kundgalleri_skickat_at')
     .eq('id', id)
     .maybeSingle();
 
@@ -353,7 +379,7 @@ export async function skickaPaketPaminnelse(formData: FormData) {
   if (!kund || !kund.email) return;
 
   const fornamn = kund.fornamn || '';
-  const brodtext = `Hej${fornamn ? ' ' + fornamn : ''}${PAKETPAMINNELSE_BRODTEXT_BASE}`;
+  const brodtext = paketPaminnelseBrodtext(fornamn, (bokning as any).kundgalleri_skickat_at);
 
   const res = await skickaMail({
     till: kund.email,
