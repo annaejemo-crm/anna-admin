@@ -314,31 +314,16 @@ export async function skippaRecensionsmail(formData: FormData) {
 
 const PAKETPAMINNELSE_AMNE = 'Påminnelse om dina bilder';
 
-const MANADER_LANGA = ['januari', 'februari', 'mars', 'april', 'maj', 'juni', 'juli', 'augusti', 'september', 'oktober', 'november', 'december'];
-
 /**
- * Gallerierna ligger uppe i tva manader fran att de skickades.
- * Ar datumet kant skrivs det ut, annars beskrivs det i ord.
+ * Inget utrakningsdatum i texten. Galleriets faktiska livslangd kan skilja
+ * fran vad systemet tror, och ett datum som inte stammer ar varre an inget.
  */
-function galleriMening(kundgalleriSkickatAt: string | null | undefined): string {
-  if (!kundgalleriSkickatAt) {
-    return 'Galleriet ligger uppe i två månader, säg till om du behöver längre tid så förlänger jag.';
-  }
-  const d = new Date(kundgalleriSkickatAt);
-  if (Number.isNaN(d.getTime())) {
-    return 'Galleriet ligger uppe i två månader, säg till om du behöver längre tid så förlänger jag.';
-  }
-  d.setMonth(d.getMonth() + 2);
-  const datum = `${d.getDate()} ${MANADER_LANGA[d.getMonth()]}`;
-  return `Galleriet ligger uppe till ${datum}, säg till om du behöver längre tid så förlänger jag.`;
-}
-
-function paketPaminnelseBrodtext(fornamn: string, kundgalleriSkickatAt: string | null | undefined): string {
+function paketPaminnelseBrodtext(fornamn: string): string {
   return `Hej${fornamn ? ' ' + fornamn : ''},
 
 hoppas allt är bra hos er!
 
-Jag hör bara av mig om bilderna, ingen stress alls. ${galleriMening(kundgalleriSkickatAt)}
+Jag hör bara av mig om bilderna, ingen stress alls. Galleriet ligger uppe i två månader från att jag skickade det, säg till om du behöver längre tid så förlänger jag.
 
 Och om det känns svårt att välja, vilket det ofta är när man tycker om många, så plockar jag gärna ut mina favoriter åt er. Med ett mindre urval att utgå från brukar det bli mycket lättare att bestämma sig.
 
@@ -361,7 +346,7 @@ export async function skickaPaketPaminnelse(formData: FormData) {
 
   const { data: bokning } = await supabase
     .from('bokningar')
-    .select('id, kund_id, kundgalleri_skickat_at')
+    .select('id, kund_id')
     .eq('id', id)
     .maybeSingle();
 
@@ -379,7 +364,7 @@ export async function skickaPaketPaminnelse(formData: FormData) {
   if (!kund || !kund.email) return;
 
   const fornamn = kund.fornamn || '';
-  const brodtext = paketPaminnelseBrodtext(fornamn, (bokning as any).kundgalleri_skickat_at);
+  const brodtext = paketPaminnelseBrodtext(fornamn);
 
   const res = await skickaMail({
     till: kund.email,
