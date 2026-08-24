@@ -31,6 +31,11 @@ const BILJETT_KORT: Record<string, string> = {
   ordinarie: 'Ordinarie',
 };
 
+/* Arrangorsteamet koper ingen biljett och finns darfor inte bland deltagarna,
+   men de tar plats i lokalen och ska raknas in i totalen. Lagg till fler har
+   om teamet vaxer. */
+const ARRANGORER = ['Anna Ejemo', 'Jennifer'];
+
 function prisForTyp(konf: any, biljettyp: string): number | null {
   if (biljettyp === 'forst_till_kvarn') return konf?.pris_forst_till_kvarn ?? null;
   if (biljettyp === 'boka_tidigt') return konf?.pris_boka_tidigt ?? null;
@@ -197,12 +202,35 @@ function NyttArForm() {
 
 function Oversikt(props: any) {
   const { konf, antalDeltagare, antalBetalda, totalIntakt, antalTalare, antalSponsorer, sponsorIntakt, antalUppgifter, klaraUppgifter } = props;
-  const fyllnadgrad = konf.antal_platser ? Math.round((antalDeltagare / konf.antal_platser) * 100) : 0;
+  /* Alla som faktiskt star i lokalen: betalande deltagare, talarna och
+     arrangorsteamet. Det ar den siffran lokal, lunch och stolar utgar fran. */
+  const antalArrangorer = ARRANGORER.length;
+  const totaltPaPlats = antalDeltagare + antalTalare + antalArrangorer;
+  const platserKvar = konf.antal_platser ? konf.antal_platser - totaltPaPlats : null;
+  const fyllnadgrad = konf.antal_platser ? Math.round((totaltPaPlats / konf.antal_platser) * 100) : 0;
   const marginal = (totalIntakt + sponsorIntakt) - (konf.budget_kostnader || 0);
   return (
     <div className="space-y-8">
+      <section className="bg-white border border-line-soft rounded-sm px-6 py-5 flex items-end justify-between gap-6">
+        <div>
+          <div className="eyebrow mb-2">Totalt på plats</div>
+          <div className="font-serif text-[38px] font-light leading-none">{totaltPaPlats} personer</div>
+          <div className="text-[12.5px] text-ink-muted mt-2">
+            {antalDeltagare} deltagare · {antalTalare} talare · {antalArrangorer} i arrangörsteamet ({ARRANGORER.join(' och ')})
+          </div>
+        </div>
+        <div className="text-right shrink-0">
+          <div className={`font-serif text-[30px] font-light leading-none ${platserKvar !== null && platserKvar < 0 ? 'text-danger' : ''}`}>
+            {platserKvar !== null ? platserKvar : '–'}
+          </div>
+          <div className="text-[12.5px] text-ink-muted mt-1.5">
+            {platserKvar !== null && platserKvar < 0 ? 'platser över kapaciteten' : 'platser kvar'} av {konf.antal_platser || '?'}
+          </div>
+        </div>
+      </section>
+
       <div className="grid grid-cols-4 gap-4">
-        <Kpi label="Deltagare" value={`${antalDeltagare} / ${konf.antal_platser || '?'}`} sub={`${fyllnadgrad}% fyllt`} />
+        <Kpi label="Deltagare" value={`${antalDeltagare} st`} sub={`betalande biljetter · ${fyllnadgrad}% fyllt`} />
         <Kpi label="Betalt" value={`${antalBetalda} st`} sub={`${(antalDeltagare - antalBetalda)} obetalda`} />
         <Kpi label="Intäkt biljetter" value={`${totalIntakt.toLocaleString('sv-SE')} kr`} sub="betalda biljetter" />
         <Kpi label="Sponsring" value={`${sponsorIntakt.toLocaleString('sv-SE')} kr`} sub={`${antalSponsorer} sponsorer`} />
