@@ -48,6 +48,22 @@ export async function uppdateraKonferens(formData: FormData) {
     budget_intakter: num(formData.get('budget_intakter')) || 0,
     anteckning: String(formData.get('anteckning') || '') || null,
   }).eq('id', konf.id);
+
+  /* Nya prisnivaer ska sla igenom pa deltagarna direkt. Annars star det gamla
+     priset kvar pa alla som redan ar inlagda och Oversikt visar fel intakt. */
+  const nyaPriser: Record<string, number> = {
+    forst_till_kvarn: num(formData.get('pris_forst_till_kvarn')) || 1100,
+    boka_tidigt: num(formData.get('pris_boka_tidigt')) || 1450,
+    ordinarie: num(formData.get('pris_ordinarie')) || 1790,
+  };
+  for (const typ of Object.keys(nyaPriser)) {
+    await supabase
+      .from('fam_deltagare')
+      .update({ pris: nyaPriser[typ] })
+      .eq('konferens_id', konf.id)
+      .eq('biljettyp', typ);
+  }
+
   revalidatePath('/admin/fam');
 }
 
@@ -180,6 +196,45 @@ export async function uppdateraDeltagare(formData: FormData) {
     allergier: String(formData.get('allergier') || '') || null,
     anteckning: String(formData.get('anteckning') || '') || null,
   }).eq('id', id);
+  revalidatePath('/admin/fam');
+}
+
+/* Priset for en biljettyp hamtas alltid fran konferensen, sa en deltagare
+   aldrig kan sta med ett pris som inte finns i prislistan. */
+function prisForTyp(konf: any, biljettyp: string): number | null {
+  if (biljettyp === 'forst_till_kvarn') return konf.pris_forst_till_kvarn ?? null;
+  if (biljettyp === 'boka_tidigt') return konf.pris_boka_tidigt ?? null;
+  return konf.pris_ordinarie ?? null;
+}
+
+/* Byter biljettyp pa en deltagare och satter om priset samtidigt. */
+export async function andraBiljettyp(formData: FormData) {
+  const ar = Number(formData.get('ar') || 0);
+  const id = String(formData.get('id') || '');
+  const biljettyp = String(formData.get('biljettyp') || '');
+  if (!id || !biljettyp) return;
+  const { supabase, konf } = await getKonferens(ar);
+  if (!konf) return;
+  await supabase
+    .from('fam_deltagare')
+    .update({ biljettyp, pris: prisForTyp(konf, biljettyp) })
+    .eq('id', id)
+    .eq('konferens_id', konf.id);
+  revalidatePath('/admin/fam');
+}
+
+/* Satter samma biljettyp och pris pa samtliga deltagare i arets konferens.
+   Anvands for att lagga en grundniva, sedan andras de som avviker pa raden. */
+export async function sattBiljettypForAlla(formData: FormData) {
+  const ar = Number(formData.get('ar') || 0);
+  const biljettyp = String(formData.get('biljettyp') || '');
+  if (!biljettyp) return;
+  const { supabase, konf } = await getKonferens(ar);
+  if (!konf) return;
+  await supabase
+    .from('fam_deltagare')
+    .update({ biljettyp, pris: prisForTyp(konf, biljettyp) })
+    .eq('konferens_id', konf.id);
   revalidatePath('/admin/fam');
 }
 
