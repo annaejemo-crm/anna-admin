@@ -3,9 +3,12 @@
 
 /**
  * Skickar mail via Resend.
- * AvsÃ¤ndare: Anna Ejemo <kontakt@annaejemo.se>
- * Reply-To: kontakt@fotografannaejemo.se (sÃ¥ svar landar i Annas vanliga inkorg)
+ * Avsändare: Anna Ejemo <kontakt@annaejemo.se>
+ * Reply-To: samma adress, så kundernas svar landar i Annas vanliga inkorg.
  */
+const AVSANDARE = 'Anna Ejemo <kontakt@annaejemo.se>';
+const SVARSADRESS = 'kontakt@annaejemo.se';
+
 export async function skickaMail(opts: {
   till: string;
   amne: string;
@@ -23,9 +26,9 @@ export async function skickaMail(opts: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Anna Ejemo <kontakt@annaejemo.se>',
+        from: AVSANDARE,
         to: [opts.till],
-        reply_to: 'kontakt@fotografannaejemo.se',
+        reply_to: SVARSADRESS,
         subject: opts.amne,
         text: opts.brodtext,
       }),
