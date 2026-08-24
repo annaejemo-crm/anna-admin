@@ -3,7 +3,7 @@ import Link from 'next/link';
 import {
   uppdateraKonferens,
   skapaTalare, raderaTalare, togglaTalareCheck, uppdateraTalareArvode, uppdateraTalareKontakt,
-  skapaDeltagare, raderaDeltagare, togglaBetaldDeltagare,
+  skapaDeltagare, raderaDeltagare, togglaBetaldDeltagare, andraBiljettyp, sattBiljettypForAlla,
   skapaSponsor, raderaSponsor,
   skapaUppgift, togglaUppgift, raderaUppgift,
   skapaSchemapost, raderaSchemapost,
@@ -24,6 +24,18 @@ const BILJETT_LABEL: Record<string, string> = {
   boka_tidigt: 'Boka tidigt',
   ordinarie: 'Ordinarie',
 };
+const BILJETT_ORDNING = ['forst_till_kvarn', 'boka_tidigt', 'ordinarie'];
+const BILJETT_KORT: Record<string, string> = {
+  forst_till_kvarn: 'Först',
+  boka_tidigt: 'Tidigt',
+  ordinarie: 'Ordinarie',
+};
+
+function prisForTyp(konf: any, biljettyp: string): number | null {
+  if (biljettyp === 'forst_till_kvarn') return konf?.pris_forst_till_kvarn ?? null;
+  if (biljettyp === 'boka_tidigt') return konf?.pris_boka_tidigt ?? null;
+  return konf?.pris_ordinarie ?? null;
+}
 
 const STATUS_LABEL: Record<string, string> = {
   kontaktad: 'Kontaktad',
@@ -352,6 +364,27 @@ function Deltagare(props: { valtAr: number; deltagare: any[]; konf: any; aterkom
       </div>
 
       <section className="bg-white border border-line-soft rounded-sm p-5">
+        <div className="eyebrow mb-3">Sätt biljettyp för alla</div>
+        <p className="text-sm text-ink-muted mb-4">
+          Lägger samma biljettyp och pris på samtliga {deltagare.length} deltagare. Använd den för att sätta en grundnivå, och ändra sedan de som avviker direkt på raden.
+        </p>
+        <div className="flex gap-2 flex-wrap">
+          {BILJETT_ORDNING.map(function(t: string) {
+            const pris = prisForTyp(konf, t);
+            return (
+              <form key={t} action={sattBiljettypForAlla}>
+                <input type="hidden" name="ar" value={valtAr} />
+                <input type="hidden" name="biljettyp" value={t} />
+                <button type="submit" className="px-4 py-2 border border-line-soft rounded-sm text-sm hover:border-ink transition-colors">
+                  Alla till {BILJETT_LABEL[t]}{pris ? ` (${pris.toLocaleString('sv-SE')} kr)` : ''}
+                </button>
+              </form>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="bg-white border border-line-soft rounded-sm p-5">
         <div className="eyebrow mb-3">Lägg till deltagare</div>
         <form action={skapaDeltagare} className="grid grid-cols-[1.5fr_1.5fr_1fr_140px_120px_auto] gap-2 items-end">
           <input type="hidden" name="ar" value={valtAr} />
@@ -386,7 +419,27 @@ function Deltagare(props: { valtAr: number; deltagare: any[]; konf: any; aterkom
                     <Td><div className="font-medium">{d.namn}{ater > 1 && <span title={`Återkommande (${ater} år)`} className="ml-1.5 text-accent">★</span>}</div></Td>
                     <Td className="font-mono text-[12px]">{d.email || '—'}</Td>
                     <Td>{d.fotograf_hemsida ? <a href={d.fotograf_hemsida.startsWith('http') ? d.fotograf_hemsida : `https://${d.fotograf_hemsida}`} target="_blank" rel="noreferrer" className="text-accent hover:underline">{d.fotograf_hemsida}</a> : '—'}</Td>
-                    <Td>{BILJETT_LABEL[d.biljettyp] || d.biljettyp}</Td>
+                    <Td>
+                      <div className="flex gap-1">
+                        {BILJETT_ORDNING.map(function(t: string) {
+                          const aktiv = d.biljettyp === t;
+                          return (
+                            <form key={t} action={andraBiljettyp} className="inline">
+                              <input type="hidden" name="ar" value={valtAr} />
+                              <input type="hidden" name="id" value={d.id} />
+                              <input type="hidden" name="biljettyp" value={t} />
+                              <button
+                                type="submit"
+                                title={`${BILJETT_LABEL[t]} · ${(prisForTyp(konf, t) || 0).toLocaleString('sv-SE')} kr`}
+                                className={`px-2 py-0.5 text-[11px] rounded-sm transition-colors ${aktiv ? 'bg-ink text-bg' : 'bg-bg-subtle text-ink-faint hover:text-ink'}`}
+                              >
+                                {BILJETT_KORT[t]}
+                              </button>
+                            </form>
+                          );
+                        })}
+                      </div>
+                    </Td>
                     <Td>{d.pris ? `${d.pris.toLocaleString('sv-SE')} kr` : '—'}</Td>
                     <Td>
                       <form action={togglaBetaldDeltagare} className="inline">
