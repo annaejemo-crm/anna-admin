@@ -5,6 +5,7 @@ import {
   skapaTalare, raderaTalare, togglaTalareCheck, uppdateraTalareArvode, uppdateraTalareKontakt,
   skapaDeltagare, raderaDeltagare, togglaBetaldDeltagare, andraBiljettyp, sattBiljettypForAlla,
   skapaSponsor, raderaSponsor,
+  skapaUtgift, raderaUtgift, togglaBetaldUtgift,
   skapaUppgift, togglaUppgift, raderaUppgift,
   skapaSchemapost, raderaSchemapost,
 } from './actions';
@@ -13,11 +14,22 @@ const FLIK_NAMN: Record<string, string> = {
   oversikt: 'Översikt',
   talare: 'Talare',
   deltagare: 'Deltagare',
-  uppgifter: 'Att göra',
   sponsorer: 'Sponsorer',
+  utgifter: 'Utgifter',
+  uppgifter: 'Att göra',
   schema: 'Schema',
 };
 const FLIKAR = Object.keys(FLIK_NAMN);
+
+const UTGIFT_KATEGORIER: Record<string, string> = {
+  lokal: 'Lokal',
+  mat: 'Mat och fika',
+  talare: 'Talare',
+  resa: 'Resa och boende',
+  material: 'Material och tryck',
+  marknadsforing: 'Marknadsföring',
+  ovrigt: 'Övrigt',
+};
 
 const BILJETT_LABEL: Record<string, string> = {
   forst_till_kvarn: 'Först till kvarn',
@@ -84,6 +96,12 @@ export default async function FamPage(props: { searchParams?: Promise<{ ar?: str
     .eq('konferens_id', konf.id)
     .order('namn') : { data: [] };
 
+  const { data: utgifter } = konf ? await supabase
+    .from('fam_utgifter')
+    .select('*')
+    .eq('konferens_id', konf.id)
+    .order('datum', { ascending: false, nullsFirst: false }) : { data: [] };
+
   const { data: uppgifter } = konf ? await supabase
     .from('fam_uppgifter')
     .select('*')
@@ -118,6 +136,12 @@ export default async function FamPage(props: { searchParams?: Promise<{ ar?: str
   const sponsorIntakt = (sponsorer || []).reduce((s: number, sp: any) => s + (sp.belopp || 0), 0);
   const antalUppgifter = (uppgifter || []).length;
   const klaraUppgifter = (uppgifter || []).filter((u: any) => u.klar).length;
+
+  /* Faktiska kostnader = inlagda utgifter plus talararvodena. Arvodena ligger
+     kvar pa talarna och ska darfor inte skrivas in som utgifter ocksa. */
+  const summaUtgifter = (utgifter || []).reduce((s: number, u: any) => s + (u.belopp_kr || 0), 0);
+  const summaArvoden = (talare || []).reduce((s: number, t: any) => s + (t.arvode || 0), 0);
+  const faktiskaKostnader = summaUtgifter + summaArvoden;
   const dagarTillEvent = konf?.datum ? Math.ceil((new Date(konf.datum).getTime() - Date.now()) / 86400000) : null;
 
   return (
@@ -163,13 +187,15 @@ export default async function FamPage(props: { searchParams?: Promise<{ ar?: str
           <p className="text-sm">Lägg till år ovan så börjar vi.</p>
         </div>
       ) : vy === 'oversikt' ? (
-        <Oversikt konf={konf} antalDeltagare={antalDeltagare} antalBetalda={antalBetalda} totalIntakt={totalIntakt} antalTalare={antalTalare} antalSponsorer={antalSponsorer} sponsorIntakt={sponsorIntakt} antalUppgifter={antalUppgifter} klaraUppgifter={klaraUppgifter} />
+        <Oversikt konf={konf} antalDeltagare={antalDeltagare} antalBetalda={antalBetalda} totalIntakt={totalIntakt} antalTalare={antalTalare} antalSponsorer={antalSponsorer} sponsorIntakt={sponsorIntakt} antalUppgifter={antalUppgifter} klaraUppgifter={klaraUppgifter} faktiskaKostnader={faktiskaKostnader} summaUtgifter={summaUtgifter} summaArvoden={summaArvoden} />
       ) : vy === 'talare' ? (
         <Talare valtAr={valtAr} talare={talare || []} />
       ) : vy === 'deltagare' ? (
         <Deltagare valtAr={valtAr} deltagare={deltagare || []} konf={konf} aterkommandeMap={aterkommandeMap} />
       ) : vy === 'sponsorer' ? (
         <Sponsorer valtAr={valtAr} sponsorer={sponsorer || []} />
+      ) : vy === 'utgifter' ? (
+        <Utgifter valtAr={valtAr} utgifter={utgifter || []} talare={talare || []} konf={konf} summaUtgifter={summaUtgifter} summaArvoden={summaArvoden} faktiskaKostnader={faktiskaKostnader} totalIntakt={totalIntakt} sponsorIntakt={sponsorIntakt} />
       ) : vy === 'uppgifter' ? (
         <Uppgifter valtAr={valtAr} uppgifter={uppgifter || []} />
       ) : vy === 'schema' ? (
@@ -201,14 +227,14 @@ function NyttArForm() {
 }
 
 function Oversikt(props: any) {
-  const { konf, antalDeltagare, antalBetalda, totalIntakt, antalTalare, antalSponsorer, sponsorIntakt, antalUppgifter, klaraUppgifter } = props;
+  const { konf, antalDeltagare, antalBetalda, totalIntakt, antalTalare, antalSponsorer, sponsorIntakt, antalUppgifter, klaraUppgifter, faktiskaKostnader, summaUtgifter, summaArvoden } = props;
   /* Alla som faktiskt star i lokalen: betalande deltagare, talarna och
      arrangorsteamet. Det ar den siffran lokal, lunch och stolar utgar fran. */
   const antalArrangorer = ARRANGORER.length;
   const totaltPaPlats = antalDeltagare + antalTalare + antalArrangorer;
   const platserKvar = konf.antal_platser ? konf.antal_platser - totaltPaPlats : null;
   const fyllnadgrad = konf.antal_platser ? Math.round((totaltPaPlats / konf.antal_platser) * 100) : 0;
-  const marginal = (totalIntakt + sponsorIntakt) - (konf.budget_kostnader || 0);
+  const marginal = (totalIntakt + sponsorIntakt) - faktiskaKostnader;
   return (
     <div className="space-y-8">
       <section className="bg-white border border-line-soft rounded-sm px-6 py-5 flex items-end justify-between gap-6">
@@ -238,7 +264,7 @@ function Oversikt(props: any) {
       <div className="grid grid-cols-4 gap-4">
         <Kpi label="Talare" value={`${antalTalare} st`} sub="bokade till FAM" />
         <Kpi label="Uppgifter" value={`${klaraUppgifter} / ${antalUppgifter}`} sub="klara av totalt" />
-        <Kpi label="Kostnader" value={`${(konf.budget_kostnader || 0).toLocaleString('sv-SE')} kr`} sub="budgeterat" />
+        <Kpi label="Kostnader" value={`${faktiskaKostnader.toLocaleString('sv-SE')} kr`} sub={`${summaUtgifter.toLocaleString('sv-SE')} i utgifter · ${summaArvoden.toLocaleString('sv-SE')} i arvoden`} />
         <Kpi label={marginal >= 0 ? 'Marginal' : 'Underskott'} value={`${Math.abs(marginal).toLocaleString('sv-SE')} kr`} sub={marginal >= 0 ? 'intäkt minus kostnad' : 'kostnad större än intäkt'} />
       </div>
 
@@ -490,6 +516,131 @@ function Deltagare(props: { valtAr: number; deltagare: any[]; konf: any; aterkom
             </tbody>
           </table>
         </div>
+      )}
+    </div>
+  );
+}
+
+function Utgifter(props: any) {
+  const { valtAr, utgifter, talare, konf, summaUtgifter, summaArvoden, faktiskaKostnader, totalIntakt, sponsorIntakt } = props;
+  const obetalt = utgifter.filter(function(u: any) { return !u.betald; }).reduce(function(s: number, u: any) { return s + (u.belopp_kr || 0); }, 0);
+  const resultat = (totalIntakt + sponsorIntakt) - faktiskaKostnader;
+  const budget = konf.budget_kostnader || 0;
+
+  const perKategori: Record<string, number> = {};
+  for (const u of utgifter) {
+    const k = u.kategori || 'ovrigt';
+    perKategori[k] = (perKategori[k] || 0) + (u.belopp_kr || 0);
+  }
+  const kategoriRader = Object.keys(perKategori)
+    .map(function(k: string) { return { k: k, belopp: perKategori[k] }; })
+    .sort(function(a, b) { return b.belopp - a.belopp; });
+
+  return (
+    <div className="space-y-6">
+      <section className="bg-white border border-line-soft rounded-sm px-6 py-5 flex items-end justify-between gap-6 flex-wrap">
+        <div>
+          <div className="eyebrow mb-2">Kostnader totalt</div>
+          <div className="font-serif text-[38px] font-light leading-none">{faktiskaKostnader.toLocaleString('sv-SE')} kr</div>
+          <div className="text-[12.5px] text-ink-muted mt-2">
+            {summaUtgifter.toLocaleString('sv-SE')} kr i utgifter · {summaArvoden.toLocaleString('sv-SE')} kr i talararvoden ({talare.length} talare)
+            {budget > 0 && ` · budget ${budget.toLocaleString('sv-SE')} kr`}
+          </div>
+        </div>
+        <div className="text-right shrink-0">
+          <div className={`font-serif text-[30px] font-light leading-none ${resultat >= 0 ? '' : 'text-danger'}`}>
+            {resultat >= 0 ? '' : '−'}{Math.abs(resultat).toLocaleString('sv-SE')} kr
+          </div>
+          <div className="text-[12.5px] text-ink-muted mt-1.5">
+            {resultat >= 0 ? 'kvar efter kostnader' : 'underskott'}
+            {obetalt > 0 && ` · ${obetalt.toLocaleString('sv-SE')} kr obetalt`}
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-white border border-line-soft rounded-sm p-5">
+        <div className="eyebrow mb-3">Lägg till utgift</div>
+        <form action={skapaUtgift} className="grid grid-cols-[130px_1.6fr_1.2fr_150px_120px_100px_auto] gap-2 items-end">
+          <input type="hidden" name="ar" value={valtAr} />
+          <Fld label="Datum"><input type="date" name="datum" className={iSty} /></Fld>
+          <Fld label="Vad avser det"><input type="text" name="beskrivning" required className={iSty} /></Fld>
+          <Fld label="Leverantör"><input type="text" name="leverantor" className={iSty} /></Fld>
+          <Fld label="Kategori"><select name="kategori" defaultValue="ovrigt" className={iSty + ' bg-white'}>
+            {Object.keys(UTGIFT_KATEGORIER).map(function(k: string) {
+              return <option key={k} value={k}>{UTGIFT_KATEGORIER[k]}</option>;
+            })}
+          </select></Fld>
+          <Fld label="Belopp (kr)"><input type="number" name="belopp_kr" className={iSty} /></Fld>
+          <Fld label="Betald"><label className="flex items-center gap-2 mt-1 text-sm"><input type="checkbox" name="betald" className="w-4 h-4" /> Ja</label></Fld>
+          <button type="submit" className="px-4 py-2 bg-ink text-bg text-sm rounded-sm">+ Lägg till</button>
+        </form>
+      </section>
+
+      {kategoriRader.length > 0 && (
+        <section className="bg-white border border-line-soft rounded-sm p-5">
+          <div className="eyebrow mb-4">Per kategori</div>
+          <div className="space-y-2">
+            {kategoriRader.map(function(r: any) {
+              const andel = summaUtgifter > 0 ? Math.round((r.belopp / summaUtgifter) * 100) : 0;
+              return (
+                <div key={r.k} className="flex items-center gap-4 text-sm">
+                  <div className="w-44 shrink-0">{UTGIFT_KATEGORIER[r.k] || r.k}</div>
+                  <div className="flex-1 h-2 bg-bg-subtle rounded-sm overflow-hidden">
+                    <div className="h-full bg-ink/70" style={{ width: `${andel}%` }} />
+                  </div>
+                  <div className="w-28 text-right font-mono text-[12.5px]">{r.belopp.toLocaleString('sv-SE')} kr</div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {utgifter.length === 0 ? (
+        <Tom text="Inga utgifter inlagda ännu" />
+      ) : (
+        <div className="bg-white border border-line-soft rounded-sm overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-bg-subtle text-left">
+              <tr>
+                <Th>Datum</Th><Th>Vad</Th><Th>Leverantör</Th><Th>Kategori</Th><Th>Belopp</Th><Th>Betald</Th><Th />
+              </tr>
+            </thead>
+            <tbody>
+              {utgifter.map(function(u: any) {
+                return (
+                  <tr key={u.id} className="border-t border-line-soft hover:bg-bg/40">
+                    <Td className="font-mono text-[12px]">{u.datum || '—'}</Td>
+                    <Td><div className="font-medium">{u.beskrivning}</div></Td>
+                    <Td>{u.leverantor || '—'}</Td>
+                    <Td>{UTGIFT_KATEGORIER[u.kategori] || u.kategori}</Td>
+                    <Td className="font-mono text-[12.5px]">{(u.belopp_kr || 0).toLocaleString('sv-SE')} kr</Td>
+                    <Td>
+                      <form action={togglaBetaldUtgift} className="inline">
+                        <input type="hidden" name="id" value={u.id} />
+                        <button type="submit" className={`px-2 py-0.5 text-[11px] rounded-sm ${u.betald ? 'bg-positive/10 text-positive' : 'bg-bg-subtle text-ink-muted'}`}>
+                          {u.betald ? 'Betald' : 'Obetald'}
+                        </button>
+                      </form>
+                    </Td>
+                    <Td>
+                      <form action={raderaUtgift}>
+                        <input type="hidden" name="id" value={u.id} />
+                        <button type="submit" className="text-ink-faint hover:text-danger text-sm">×</button>
+                      </form>
+                    </Td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {summaArvoden > 0 && (
+        <p className="text-[12.5px] text-ink-muted">
+          Talararvodena på {summaArvoden.toLocaleString('sv-SE')} kr räknas in i totalen automatiskt och ligger kvar under fliken Talare. Lägg inte in dem här också.
+        </p>
       )}
     </div>
   );
