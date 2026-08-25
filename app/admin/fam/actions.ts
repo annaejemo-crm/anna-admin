@@ -359,3 +359,47 @@ export async function raderaSchemapost(formData: FormData) {
   await supabase.from('fam_schema').delete().eq('id', id);
   revalidatePath('/admin/fam');
 }
+
+/* ============ UTGIFTER ============ */
+
+export async function skapaUtgift(formData: FormData) {
+  const ar = Number(formData.get('ar') || 0);
+  const { supabase, user, konf } = await getKonferens(ar);
+  if (!user || !konf) return;
+  const beskrivning = String(formData.get('beskrivning') || '').trim();
+  if (!beskrivning) return;
+  const betald = formData.get('betald') === 'on';
+  await supabase.from('fam_utgifter').insert({
+    user_id: user.id,
+    konferens_id: konf.id,
+    datum: String(formData.get('datum') || '') || null,
+    kategori: String(formData.get('kategori') || 'ovrigt'),
+    beskrivning,
+    leverantor: String(formData.get('leverantor') || '') || null,
+    belopp_kr: num(formData.get('belopp_kr')) || 0,
+    betald,
+    betald_datum: betald ? new Date().toISOString().slice(0, 10) : null,
+  });
+  revalidatePath('/admin/fam');
+}
+
+export async function togglaBetaldUtgift(formData: FormData) {
+  const id = String(formData.get('id') || '');
+  if (!id) return;
+  const supabase = await createClient();
+  const { data } = await supabase.from('fam_utgifter').select('betald').eq('id', id).maybeSingle();
+  if (!data) return;
+  await supabase.from('fam_utgifter').update({
+    betald: !data.betald,
+    betald_datum: !data.betald ? new Date().toISOString().slice(0, 10) : null,
+  }).eq('id', id);
+  revalidatePath('/admin/fam');
+}
+
+export async function raderaUtgift(formData: FormData) {
+  const id = String(formData.get('id') || '');
+  if (!id) return;
+  const supabase = await createClient();
+  await supabase.from('fam_utgifter').delete().eq('id', id);
+  revalidatePath('/admin/fam');
+}
