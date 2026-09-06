@@ -403,3 +403,28 @@ export async function raderaUtgift(formData: FormData) {
   await supabase.from('fam_utgifter').delete().eq('id', id);
   revalidatePath('/admin/fam');
 }
+
+/* Byter namn, mejl och hemsida på en deltagare direkt på raden. Byts
+   namnet skrivs det gamla in i anteckningen, så det syns att biljetten
+   sålts vidare och av vem. Biljettyp, pris och betald rörs inte. */
+export async function bytDeltagare(formData: FormData) {
+  const id = String(formData.get('id') || '');
+  const namn = String(formData.get('namn') || '').trim();
+  if (!id || !namn) return;
+  const supabase = await createClient();
+  const { data } = await supabase.from('fam_deltagare').select('namn, anteckning').eq('id', id).maybeSingle();
+  if (!data) return;
+  let anteckning = data.anteckning || null;
+  if (data.namn && data.namn.trim() !== namn) {
+    const datum = new Date().toLocaleDateString('sv-SE', { day: 'numeric', month: 'short', year: 'numeric' });
+    const rad = `Biljett överlåten från ${data.namn.trim()} ${datum}`;
+    anteckning = anteckning ? `${rad}\n${anteckning}` : rad;
+  }
+  await supabase.from('fam_deltagare').update({
+    namn,
+    email: String(formData.get('email') || '').trim() || null,
+    fotograf_hemsida: String(formData.get('fotograf_hemsida') || '').trim() || null,
+    anteckning,
+  }).eq('id', id);
+  revalidatePath('/admin/fam');
+}
