@@ -9,6 +9,7 @@ import {
   skapaUppgift, togglaUppgift, raderaUppgift,
   skapaSchemapost, raderaSchemapost,
 } from './actions';
+import { DeltagareNamn } from './DeltagareNamn';
 
 const FLIK_NAMN: Record<string, string> = {
   oversikt: 'Översikt',
@@ -470,7 +471,7 @@ function Deltagare(props: { valtAr: number; deltagare: any[]; konf: any; aterkom
                 const ater = d.email ? (aterkommandeMap[d.email.toLowerCase()] || 0) : 0;
                 return (
                   <tr key={d.id} className="border-t border-line-soft hover:bg-bg/40">
-                    <Td><div className="font-medium">{d.namn}{ater > 1 && <span title={`Återkommande (${ater} år)`} className="ml-1.5 text-accent">★</span>}</div></Td>
+                    <Td><DeltagareNamn d={{ id: d.id, namn: d.namn, email: d.email, fotograf_hemsida: d.fotograf_hemsida, anteckning: d.anteckning }} ater={ater} /></Td>
                     <Td className="font-mono text-[12px]">{d.email || '—'}</Td>
                     <Td>{d.fotograf_hemsida ? <a href={d.fotograf_hemsida.startsWith('http') ? d.fotograf_hemsida : `https://${d.fotograf_hemsida}`} target="_blank" rel="noreferrer" className="text-accent hover:underline">{d.fotograf_hemsida}</a> : '—'}</Td>
                     <Td>
