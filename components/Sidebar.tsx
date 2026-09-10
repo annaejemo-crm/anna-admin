@@ -13,6 +13,7 @@ const NAV = [
       { href: '/admin/bokningar/ny', label: '+ Ny bokning' },
       { href: '/admin/forfragningar', label: 'Förfrågningar' },
       { href: '/admin/foretag', label: 'Företag' },
+      { href: '/admin/utveckling', label: 'Utveckling' },
       { href: '/admin/kalender', label: 'Kalender' },
     ],
   },
