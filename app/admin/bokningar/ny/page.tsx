@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { NyBokningForm } from './NyBokningForm';
 
-export default async function NyBokningPage(props: { searchParams?: Promise<{ kund?: string; fel?: string }> }) {
+export default async function NyBokningPage(props: { searchParams?: Promise<{ kund?: string; fel?: string; status?: string }> }) {
   const supabase = await createClient();
   const sp = props.searchParams ? await props.searchParams : {};
 
@@ -34,14 +34,16 @@ export default async function NyBokningPage(props: { searchParams?: Promise<{ ku
     return { id: p.id, namn: p.namn, avstand_km_enkel: p.avstand_km_enkel };
   });
 
+  const arForfragan = sp.status === 'forfragan';
+
   return (
     <>
       <div className="mb-10 pb-6 border-b border-line">
-        <div className="eyebrow mb-1.5">Lägg in en ny bokning</div>
-        <h1 className="font-serif text-[42px] font-light leading-tight">Ny bokning</h1>
+        <div className="eyebrow mb-1.5">{arForfragan ? 'Lägg in en förfrågan' : 'Lägg in en ny bokning'}</div>
+        <h1 className="font-serif text-[42px] font-light leading-tight">{arForfragan ? 'Ny förfrågan' : 'Ny bokning'}</h1>
       </div>
 
-      <NyBokningForm kunder={kunder} typer={typer} platser={platser} valdKundId={sp.kund || null} fel={sp.fel || null} />
+      <NyBokningForm kunder={kunder} typer={typer} platser={platser} valdKundId={sp.kund || null} fel={sp.fel || null} startStatus={sp.status || null} />
     </>
   );
 }
