@@ -395,8 +395,12 @@ export async function skapaBokning(formData: FormData) {
   // Obligatoriskt sedan 2026-09-10: kalla, e-post, telefon, datum och klockslag.
   // Saknas nagot skickas Anna tillbaka till formularet med ett meddelande,
   // inget sparas. Gamla bokningar rors inte, kravet galler bara nya.
+  // En forfragan (status forfragan) far sakna datum och tid.
+  const status = String(formData.get('status') || 'bokad');
+  const arForfragan = status === 'forfragan';
+
   function avbryt(varfor: string): never {
-    redirect('/admin/bokningar/ny?fel=' + encodeURIComponent(varfor));
+    redirect('/admin/bokningar/ny?fel=' + encodeURIComponent(varfor) + (arForfragan ? '&status=forfragan' : ''));
   }
 
   const kund_lage = String(formData.get('kund_lage') || 'ny');
@@ -409,8 +413,8 @@ export async function skapaBokning(formData: FormData) {
   const telefon = String(formData.get('telefon') || '').trim() || null;
 
   const saknas: string[] = [];
-  if (!datum) saknas.push('datum');
-  if (!tid) saknas.push('klockslag');
+  if (!datum && !arForfragan) saknas.push('datum');
+  if (!tid && !arForfragan) saknas.push('klockslag');
   if (!kalla) saknas.push('källa');
 
   if (kund_lage === 'existerande') {
@@ -468,7 +472,6 @@ export async function skapaBokning(formData: FormData) {
   const plats = String(formData.get('plats') || '') || null;
   const adress = String(formData.get('adress') || '') || null;
   const fotograferingstyp_id = String(formData.get('fotograferingstyp_id') || '') || null;
-  const status = String(formData.get('status') || 'bokad');
 
   const bokningsavgiftRaw = String(formData.get('bokningsavgift_kr') || '').replace(/\s/g, '').replace(',', '.');
   const bokningsavgift_kr = bokningsavgiftRaw ? Math.round(parseFloat(bokningsavgiftRaw)) : null;
@@ -524,10 +527,33 @@ export async function skapaBokning(formData: FormData) {
     kalla: kalla,
   });
 
+  revalidatePath('/admin');
   revalidatePath('/admin/kunder');
+  revalidatePath('/admin/forfragningar');
   revalidatePath(`/admin/kunder/${kund_id}`);
   revalidatePath('/admin/ekonomi');
-  redirect(`/admin/kunder/${kund_id}`);
+  redirect(arForfragan ? '/admin/forfragningar' : `/admin/kunder/${kund_id}`);
+}
+
+/**
+ * Avgor en forfragan. "bokad" skickar Anna vidare till redigeringssidan
+ * sa hon kan satta datum och tid, "tackade_nej" stanger den utan att
+ * radera nagot, sa statistiken i steg 3 kan rakna hur manga som blev bokning.
+ */
+export async function avgorForfragan(formData: FormData) {
+  const supabase = await createClient();
+  const id = String(formData.get('id') || '');
+  const beslut = String(formData.get('beslut') || '');
+  if (!id) return;
+  if (beslut !== 'bokad' && beslut !== 'tackade_nej' && beslut !== 'forfragan') return;
+
+  await supabase.from('bokningar').update({ status: beslut }).eq('id', id);
+
+  revalidatePath('/admin');
+  revalidatePath('/admin/forfragningar');
+  revalidatePath('/admin/kunder');
+
+  if (beslut === 'bokad') redirect(`/admin/bokningar/${id}/redigera`);
 }
 
 export async function updateKund(formData: FormData) {
