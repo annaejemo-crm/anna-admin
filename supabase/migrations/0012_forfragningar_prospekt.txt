@@ -1,0 +1,25 @@
+-- 0012: Förfrågningar och företagsprospekt (steg 2 i CRM-planen, 2026-09-10)
+-- Körs i Supabase SQL Editor. Går att köra flera gånger utan skada.
+
+-- Företagsprospekt: läge i affären, nästa steg och när det ska följas upp.
+alter table public.kunder add column if not exists prospekt_lage text;
+alter table public.kunder add column if not exists nasta_steg text;
+alter table public.kunder add column if not exists uppfoljning_datum date;
+
+-- Tillåtna lägen: prospekt, kontaktad, offert_skickad, kund, avslutad
+alter table public.kunder drop constraint if exists kunder_prospekt_lage_check;
+alter table public.kunder add constraint kunder_prospekt_lage_check
+  check (prospekt_lage is null or prospekt_lage in ('prospekt', 'kontaktad', 'offert_skickad', 'kund', 'avslutad'));
+
+-- Företag som redan har en bokning räknas som kund. Ingen historik läggs in,
+-- det här är bara ett härlett läge så listan Företag blir rätt från start.
+update public.kunder k
+set prospekt_lage = 'kund'
+where k.ar_foretagskund is true
+  and k.prospekt_lage is null
+  and exists (select 1 from public.bokningar b where b.kund_id = k.id and b.status not in ('forfragan', 'tackade_nej', 'avbokad'));
+
+create index if not exists kunder_uppfoljning_idx on public.kunder (user_id, uppfoljning_datum) where uppfoljning_datum is not null;
+
+-- Förfrågningar behöver ingen ändring: de är bokningar med status forfragan,
+-- och nekade förfrågningar får status tackade_nej. Kolumnen status är text.
