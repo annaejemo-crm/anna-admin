@@ -16,6 +16,7 @@ const STATUS_LIST: { kod: string; label: string }[] = [
   { kod: 'betald', label: 'Betald' },
   { kod: 'klar', label: 'Klar' },
   { kod: 'avbokad', label: 'Avbokad' },
+  { kod: 'tackade_nej', label: 'Tackade nej' },
 ];
 
 export default async function RedigeraBokningPage(props: { params: Promise<{ id: string }> }) {
