@@ -392,19 +392,62 @@ export async function skapaBokning(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
 
+  // Obligatoriskt sedan 2026-09-10: kalla, e-post, telefon, datum och klockslag.
+  // Saknas nagot skickas Anna tillbaka till formularet med ett meddelande,
+  // inget sparas. Gamla bokningar rors inte, kravet galler bara nya.
+  function avbryt(varfor: string): never {
+    redirect('/admin/bokningar/ny?fel=' + encodeURIComponent(varfor));
+  }
+
   const kund_lage = String(formData.get('kund_lage') || 'ny');
   let kund_id: string | null = null;
 
+  const datum = String(formData.get('datum') || '') || null;
+  const tid = String(formData.get('tid') || '') || null;
+  const kalla = String(formData.get('kalla') || '').trim() || null;
+  const email = String(formData.get('email') || '').trim() || null;
+  const telefon = String(formData.get('telefon') || '').trim() || null;
+
+  const saknas: string[] = [];
+  if (!datum) saknas.push('datum');
+  if (!tid) saknas.push('klockslag');
+  if (!kalla) saknas.push('källa');
+
   if (kund_lage === 'existerande') {
     kund_id = String(formData.get('kund_id') || '') || null;
+    if (!kund_id) avbryt('välj en kund.');
+
+    const { data: kund } = await supabase
+      .from('kunder')
+      .select('id, email, telefon')
+      .eq('id', kund_id)
+      .maybeSingle();
+    if (!kund) avbryt('kunden hittades inte.');
+
+    // Kompletterar kunden med det som saknas, utan att skriva over det som finns
+    const nyEmail = (kund.email && String(kund.email).trim()) ? null : email;
+    const nyTelefon = (kund.telefon && String(kund.telefon).trim()) ? null : telefon;
+    if (!(kund.email && String(kund.email).trim()) && !nyEmail) saknas.push('e-post');
+    if (!(kund.telefon && String(kund.telefon).trim()) && !nyTelefon) saknas.push('telefon');
+    if (saknas.length > 0) avbryt('fyll i ' + saknas.join(', ') + '.');
+
+    if (nyEmail || nyTelefon) {
+      const komplettering: { email?: string; telefon?: string } = {};
+      if (nyEmail) komplettering.email = nyEmail;
+      if (nyTelefon) komplettering.telefon = nyTelefon;
+      await supabase.from('kunder').update(komplettering).eq('id', kund_id);
+    }
   } else {
-    const fornamn = String(formData.get('fornamn') || '');
+    const fornamn = String(formData.get('fornamn') || '').trim();
     const efternamn = String(formData.get('efternamn') || '') || null;
     const foretagsnamn = String(formData.get('foretagsnamn') || '') || null;
     const ar_foretagskund = formData.get('ar_foretagskund') === 'on';
-    const email = String(formData.get('email') || '') || null;
-    const telefon = String(formData.get('telefon') || '') || null;
     const hur_hittade = String(formData.get('hur_hittade') || '') || null;
+
+    if (!fornamn) saknas.unshift('förnamn');
+    if (!email) saknas.push('e-post');
+    if (!telefon) saknas.push('telefon');
+    if (saknas.length > 0) avbryt('fyll i ' + saknas.join(', ') + '.');
 
     const { data: nyKund } = await supabase.from('kunder').insert({
       user_id: user.id,
@@ -420,10 +463,8 @@ export async function skapaBokning(formData: FormData) {
     if (nyKund) kund_id = nyKund.id;
   }
 
-  if (!kund_id) return;
+  if (!kund_id) avbryt('kunden kunde inte sparas.');
 
-  const datum = String(formData.get('datum') || '') || null;
-  const tid = String(formData.get('tid') || '') || null;
   const plats = String(formData.get('plats') || '') || null;
   const adress = String(formData.get('adress') || '') || null;
   const fotograferingstyp_id = String(formData.get('fotograferingstyp_id') || '') || null;
@@ -434,7 +475,6 @@ export async function skapaBokning(formData: FormData) {
   const bokningsavgift_betald = formData.get('bokningsavgift_betald') === 'on';
   const innefattar_traktamente = formData.get('innefattar_traktamente') === 'on';
   const intern_anteckning = String(formData.get('intern_anteckning') || '') || null;
-  const kalla = String(formData.get('kalla') || '') || null;
 
   // Plats kan vara vald från listan eller frihandstext
   const plats_id_raw = String(formData.get('plats_id') || '');
