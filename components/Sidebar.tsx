@@ -11,6 +11,8 @@ const NAV = [
       { href: '/admin', label: 'Dashboard' },
       { href: '/admin/kunder', label: 'Kunder & bokningar' },
       { href: '/admin/bokningar/ny', label: '+ Ny bokning' },
+      { href: '/admin/forfragningar', label: 'Förfrågningar' },
+      { href: '/admin/foretag', label: 'Företag' },
       { href: '/admin/kalender', label: 'Kalender' },
     ],
   },
