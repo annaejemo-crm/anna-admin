@@ -119,7 +119,11 @@ export default async function UtvecklingPage() {
   });
 
   /* Typer per manad, fotograferingar med datum efter matstart */
-  const fotoSedanStart = bokningar.filter(function(b) { return b.datum && b.datum >= MATSTART && arRiktig(b); });
+  const slutDennaManad = `${nu.getFullYear()}-${String(nu.getMonth() + 1).padStart(2, '0')}-31`;
+  const fotoSedanStart = bokningar.filter(function(b) { return b.datum && b.datum >= MATSTART && b.datum <= slutDennaManad && arRiktig(b); });
+  /* Inbokat framat: fotodatum efter innevarande manad, visas separat sa totalerna stammer med tabellen */
+  const framat = bokningar.filter(function(b) { return b.datum && b.datum > slutDennaManad && arRiktig(b); });
+  const framatKr = framat.reduce(function(s, b) { return s + belopp(b); }, 0);
   const typer: string[] = [];
   fotoSedanStart.forEach(function(b) { const t = b.fotograferingstyp?.namn || 'Utan typ'; if (typer.indexOf(t) === -1) typer.push(t); });
   typer.sort(function(a, b) {
@@ -270,6 +274,9 @@ export default async function UtvecklingPage() {
               </table>
             )}
           </div>
+          {framat.length > 0 && (
+            <p className="text-ink-muted text-[12.5px] mt-3">Dessutom {framat.length} inbokade efter den här månaden, {kr(framatKr)}.</p>
+          )}
         </section>
       </div>
 
