@@ -14,6 +14,7 @@ const COLOR: Record<StatusKod, string> = {
   betald: 'text-positive',
   klar: 'text-positive',
   avbokad: 'text-danger',
+  tackade_nej: 'text-ink-faint',
 };
 
 export function StatusPill({ status }: { status: StatusKod }) {

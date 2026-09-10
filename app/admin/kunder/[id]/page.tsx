@@ -4,8 +4,11 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { togglePaid, setBildpaket } from '../actions';
 import { toggleKundgalleri, gaVidare, skickaRecensionsmail } from '../../bokningar/actions';
-import { harledBokningStatus, harledAvtalStatus } from '@/lib/types';
+import { harledBokningStatus, harledAvtalStatus, PROSPEKT_LAGEN } from '@/lib/types';
 import { AvtalPill } from '@/components/AvtalPill';
+import { uppdateraProspekt } from '../../foretag/actions';
+
+const prospektInput = 'w-full px-3 py-2.5 bg-white border border-line-soft rounded-sm text-sm focus:outline-none focus:border-ink';
 
 export default async function KundDetaljPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
@@ -88,6 +91,36 @@ export default async function KundDetaljPage(props: { params: Promise<{ id: stri
         </div>
       )}
       {!arForetagskund && <div className="mb-12" />}
+
+      {arForetagskund && (
+        <form action={uppdateraProspekt} className="bg-white border border-line-soft rounded-sm p-6 mb-12">
+          <input type="hidden" name="id" value={kund.id} />
+          <input type="hidden" name="tillbaka" value="kund" />
+          <div className="flex items-end justify-between mb-5">
+            <div className="eyebrow">Prospekt och uppföljning</div>
+            <Link href="/admin/foretag" className="text-[12px] text-ink-muted hover:text-ink">Alla företag</Link>
+          </div>
+          <div className="grid grid-cols-4 gap-5 items-end">
+            <div>
+              <label className="block text-[12px] uppercase tracking-wider text-ink-muted mb-1.5">Läge</label>
+              <select name="prospekt_lage" defaultValue={kund.prospekt_lage || (bokningar.length > 0 ? 'kund' : 'prospekt')} className={prospektInput}>
+                {PROSPEKT_LAGEN.map(function(l) { return <option key={l.kod} value={l.kod}>{l.label}</option>; })}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[12px] uppercase tracking-wider text-ink-muted mb-1.5">Nästa steg</label>
+              <input type="text" name="nasta_steg" defaultValue={kund.nasta_steg || ''} className={prospektInput} />
+            </div>
+            <div>
+              <label className="block text-[12px] uppercase tracking-wider text-ink-muted mb-1.5">Följ upp senast</label>
+              <input type="date" name="uppfoljning_datum" defaultValue={kund.uppfoljning_datum || ''} className={prospektInput} />
+            </div>
+            <div className="flex justify-end">
+              <button type="submit" className="px-4 py-2.5 text-sm border border-line-soft rounded-sm hover:border-ink transition-colors">Spara</button>
+            </div>
+          </div>
+        </form>
+      )}
 
       <div className="flex justify-between items-end mb-4">
         <h2 className="font-serif text-2xl">Bokningar</h2>

@@ -26,11 +26,15 @@ type KundOption = { id: string; label: string; arForetagskund?: boolean; harEmai
  * Obligatoriska falt sedan 2026-09-10: kalla, e-post, telefon, datum och klockslag.
  * Webblasaren stoppar formularet via required, och skapaBokning kontrollerar
  * samma sak pa servern och skickar tillbaka hit med ?fel= om nagot saknas.
+ * Undantag: ar status Forfragan ar datum och tid valfria, en forfragan har
+ * ofta inget datum an. Den dyker da upp under Forfragningar i stallet.
  */
-export function NyBokningForm(props: { kunder: KundOption[]; typer: { id: string; namn: string }[]; platser: PlatsOption[]; valdKundId: string | null; fel?: string | null }) {
+export function NyBokningForm(props: { kunder: KundOption[]; typer: { id: string; namn: string }[]; platser: PlatsOption[]; valdKundId: string | null; fel?: string | null; startStatus?: string | null }) {
   const [kundLage, setKundLage] = useState<'existerande' | 'ny'>(props.valdKundId ? 'existerande' : 'ny');
   const [valdKund, setValdKund] = useState(props.valdKundId || '');
   const [nyArForetagskund, setNyArForetagskund] = useState(false);
+  const [status, setStatus] = useState(props.startStatus === 'forfragan' ? 'forfragan' : 'bokad');
+  const arForfragan = status === 'forfragan';
 
   const valdKundObj = props.kunder.find(function(k) { return k.id === valdKund; });
   const arForetagskund = kundLage === 'ny' ? nyArForetagskund : !!valdKundObj?.arForetagskund;
@@ -316,18 +320,6 @@ export function NyBokningForm(props: { kunder: KundOption[]; typer: { id: string
         )}
       </Section>
 
-      <Section title="Bokningens datum och plats">
-        <Row>
-          <Field label="Datum" kravs>
-            <input type="date" name="datum" className={inputStyle} required />
-          </Field>
-          <Field label="Tid" kravs>
-            <input type="time" name="tid" className={inputStyle} required />
-          </Field>
-        </Row>
-        <PlatsValjare platser={props.platser} />
-      </Section>
-
       <Section title="Typ och status">
         <Row>
           <Field label="Fotograferingstyp">
@@ -339,11 +331,21 @@ export function NyBokningForm(props: { kunder: KundOption[]; typer: { id: string
             </select>
           </Field>
           <Field label="Status">
-            <select name="status" defaultValue="bokad" className={inputStyle}>
+            <select
+              name="status"
+              value={status}
+              onChange={function(e) { setStatus(e.target.value); }}
+              className={inputStyle}
+            >
               {STATUS_LIST.map(function(s) {
                 return <option key={s.kod} value={s.kod}>{s.label}</option>;
               })}
             </select>
+            {arForfragan && (
+              <p className="text-[12px] text-ink-muted mt-1.5">
+                En förfrågan behöver inget datum än. Den hamnar under Förfrågningar tills du bokar in den eller markerar att kunden tackade nej.
+              </p>
+            )}
           </Field>
         </Row>
         <Field label="Var kom bokningen ifrån (källa)" kravs>
@@ -358,6 +360,18 @@ export function NyBokningForm(props: { kunder: KundOption[]; typer: { id: string
             <option value="Annat">Annat</option>
           </select>
         </Field>
+      </Section>
+
+      <Section title={arForfragan ? 'Önskat datum och plats (valfritt)' : 'Bokningens datum och plats'}>
+        <Row>
+          <Field label="Datum" kravs={!arForfragan}>
+            <input type="date" name="datum" className={inputStyle} required={!arForfragan} />
+          </Field>
+          <Field label="Tid" kravs={!arForfragan}>
+            <input type="time" name="tid" className={inputStyle} required={!arForfragan} />
+          </Field>
+        </Row>
+        <PlatsValjare platser={props.platser} />
       </Section>
 
       <Section title="Bokningsavgift">
