@@ -15,7 +15,8 @@ export type StatusKod =
   | 'levererat'
   | 'betald'
   | 'klar'
-  | 'avbokad';
+  | 'avbokad'
+  | 'tackade_nej';
 
 export const STATUS_LABELS: Record<StatusKod, string> = {
   forfragan: 'Förfrågan',
@@ -31,6 +32,30 @@ export const STATUS_LABELS: Record<StatusKod, string> = {
   betald: 'Betald',
   klar: 'Klar',
   avbokad: 'Avbokad',
+  tackade_nej: 'Tackade nej',
+};
+
+/**
+ * Lagen for ett foretagsprospekt (kunder.prospekt_lage). Sedan 2026-09-10.
+ * Prospekt ar ett foretag Anna vill jobba med men inte kontaktat an,
+ * kund ar ett foretag som bokat, avslutad ar ett spar som inte ledde nagonstans.
+ */
+export type ProspektLage = 'prospekt' | 'kontaktad' | 'offert_skickad' | 'kund' | 'avslutad';
+
+export const PROSPEKT_LAGEN: { kod: ProspektLage; label: string }[] = [
+  { kod: 'prospekt', label: 'Prospekt' },
+  { kod: 'kontaktad', label: 'Kontaktad' },
+  { kod: 'offert_skickad', label: 'Offert skickad' },
+  { kod: 'kund', label: 'Kund' },
+  { kod: 'avslutad', label: 'Avslutad' },
+];
+
+export const PROSPEKT_LABELS: Record<ProspektLage, string> = {
+  prospekt: 'Prospekt',
+  kontaktad: 'Kontaktad',
+  offert_skickad: 'Offert skickad',
+  kund: 'Kund',
+  avslutad: 'Avslutad',
 };
 
 /**
@@ -66,6 +91,9 @@ export function harledAvtalStatus(b: any): AvtalStatusKort {
 export function harledBokningStatus(b: any): StatusKod {
   if (!b) return 'bokad';
   if (b.status === 'avbokad') return 'avbokad';
+  // Forfragningar och nekade forfragningar ar egna spar, de foljer inte bokningsflodet
+  if (b.status === 'forfragan') return 'forfragan';
+  if (b.status === 'tackade_nej') return 'tackade_nej';
   if (b.bokning_klar) return 'klar';
   if (b.bildpaket_betald) return 'klar';
   if (b.bildpaket_namn && b.bildpaket_kr) return 'faktura_skickad';
