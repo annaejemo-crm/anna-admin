@@ -20,15 +20,22 @@ const STATUS_LIST: { kod: string; label: string }[] = [
 
 const HUR_HITTADE_FORSLAG = ['Instagram', 'Google', 'Rekommendation', 'Återkommande kund', 'Annat'];
 
-type KundOption = { id: string; label: string; arForetagskund?: boolean };
+type KundOption = { id: string; label: string; arForetagskund?: boolean; harEmail?: boolean; harTelefon?: boolean };
 
-export function NyBokningForm(props: { kunder: KundOption[]; typer: { id: string; namn: string }[]; platser: PlatsOption[]; valdKundId: string | null }) {
+/**
+ * Obligatoriska falt sedan 2026-09-10: kalla, e-post, telefon, datum och klockslag.
+ * Webblasaren stoppar formularet via required, och skapaBokning kontrollerar
+ * samma sak pa servern och skickar tillbaka hit med ?fel= om nagot saknas.
+ */
+export function NyBokningForm(props: { kunder: KundOption[]; typer: { id: string; namn: string }[]; platser: PlatsOption[]; valdKundId: string | null; fel?: string | null }) {
   const [kundLage, setKundLage] = useState<'existerande' | 'ny'>(props.valdKundId ? 'existerande' : 'ny');
   const [valdKund, setValdKund] = useState(props.valdKundId || '');
   const [nyArForetagskund, setNyArForetagskund] = useState(false);
 
   const valdKundObj = props.kunder.find(function(k) { return k.id === valdKund; });
   const arForetagskund = kundLage === 'ny' ? nyArForetagskund : !!valdKundObj?.arForetagskund;
+  const saknarEmail = kundLage === 'existerande' && !!valdKundObj && !valdKundObj.harEmail;
+  const saknarTelefon = kundLage === 'existerande' && !!valdKundObj && !valdKundObj.harTelefon;
 
   const formRef = useRef<HTMLFormElement>(null);
   const [forfragan, setForfragan] = useState('');
@@ -185,6 +192,12 @@ export function NyBokningForm(props: { kunder: KundOption[]; typer: { id: string
 
   return (
     <form ref={formRef} action={skapaBokning} className="space-y-8 max-w-3xl">
+      {props.fel && (
+        <div className="bg-white border border-accent rounded-sm p-4 text-sm text-accent">
+          Bokningen sparades inte: {props.fel}
+        </div>
+      )}
+
       <Section title="Klistra in förfrågan">
         <p className="text-sm text-ink-muted mb-3">
           Klistra in mejlet från bokningsformuläret så fylls namn, kontaktuppgifter, typ och källa i åt dig. Datum, tid, plats och pris fyller du i själv.
@@ -240,11 +253,30 @@ export function NyBokningForm(props: { kunder: KundOption[]; typer: { id: string
                 return <option key={k.id} value={k.id}>{k.label}</option>;
               })}
             </select>
+            {(saknarEmail || saknarTelefon) && (
+              <div className="mt-5 space-y-3">
+                <p className="text-sm text-ink-muted">
+                  Kunden saknar {saknarEmail && saknarTelefon ? 'e-post och telefon' : saknarEmail ? 'e-post' : 'telefon'}. Fyll i så sparas det på kunden.
+                </p>
+                <Row>
+                  {saknarEmail && (
+                    <Field label="Email" kravs>
+                      <input type="email" name="email" className={inputStyle} required />
+                    </Field>
+                  )}
+                  {saknarTelefon && (
+                    <Field label="Telefon" kravs>
+                      <input type="tel" name="telefon" className={inputStyle} required />
+                    </Field>
+                  )}
+                </Row>
+              </div>
+            )}
           </Field>
         ) : (
           <div className="space-y-5">
             <Row>
-              <Field label="Förnamn">
+              <Field label="Förnamn" kravs>
                 <input type="text" name="fornamn" className={inputStyle} required />
               </Field>
               <Field label="Efternamn">
@@ -265,11 +297,11 @@ export function NyBokningForm(props: { kunder: KundOption[]; typer: { id: string
               <span className="text-sm">Företagskund (priser anges exklusive moms)</span>
             </label>
             <Row>
-              <Field label="Email">
-                <input type="email" name="email" className={inputStyle} />
+              <Field label="Email" kravs>
+                <input type="email" name="email" className={inputStyle} required />
               </Field>
-              <Field label="Telefon">
-                <input type="tel" name="telefon" className={inputStyle} />
+              <Field label="Telefon" kravs>
+                <input type="tel" name="telefon" className={inputStyle} required />
               </Field>
             </Row>
             <Field label="Hur hittade kunden mig">
@@ -286,11 +318,11 @@ export function NyBokningForm(props: { kunder: KundOption[]; typer: { id: string
 
       <Section title="Bokningens datum och plats">
         <Row>
-          <Field label="Datum">
-            <input type="date" name="datum" className={inputStyle} />
+          <Field label="Datum" kravs>
+            <input type="date" name="datum" className={inputStyle} required />
           </Field>
-          <Field label="Tid">
-            <input type="time" name="tid" className={inputStyle} />
+          <Field label="Tid" kravs>
+            <input type="time" name="tid" className={inputStyle} required />
           </Field>
         </Row>
         <PlatsValjare platser={props.platser} />
@@ -314,8 +346,8 @@ export function NyBokningForm(props: { kunder: KundOption[]; typer: { id: string
             </select>
           </Field>
         </Row>
-        <Field label="Var kom bokningen ifrån (källa)">
-          <select name="kalla" defaultValue="" className={inputStyle}>
+        <Field label="Var kom bokningen ifrån (källa)" kravs>
+          <select name="kalla" defaultValue="" className={inputStyle} required>
             <option value="">Välj källa</option>
             <option value="Instagram">Instagram</option>
             <option value="Google">Google</option>
@@ -401,10 +433,13 @@ function Row(props: { children: any }) {
   return <div className="grid grid-cols-2 gap-5">{props.children}</div>;
 }
 
-function Field(props: { label: string; children: any }) {
+function Field(props: { label: string; children: any; kravs?: boolean }) {
   return (
     <div>
-      <label className="block text-[12px] uppercase tracking-wider text-ink-muted mb-1.5">{props.label}</label>
+      <label className="block text-[12px] uppercase tracking-wider text-ink-muted mb-1.5">
+        {props.label}
+        {props.kravs && <span className="text-accent ml-1" title="Obligatoriskt">*</span>}
+      </label>
       {props.children}
     </div>
   );
