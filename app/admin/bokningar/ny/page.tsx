@@ -1,13 +1,13 @@
 import { createClient } from '@/lib/supabase/server';
 import { NyBokningForm } from './NyBokningForm';
 
-export default async function NyBokningPage(props: { searchParams?: Promise<{ kund?: string }> }) {
+export default async function NyBokningPage(props: { searchParams?: Promise<{ kund?: string; fel?: string }> }) {
   const supabase = await createClient();
   const sp = props.searchParams ? await props.searchParams : {};
 
   const { data: kunderRaw } = await supabase
     .from('kunder')
-    .select('id, fornamn, efternamn, foretagsnamn, ar_foretagskund')
+    .select('id, fornamn, efternamn, foretagsnamn, ar_foretagskund, email, telefon')
     .order('fornamn');
   const { data: typerRaw } = await supabase
     .from('fotograferingstyper')
@@ -25,6 +25,8 @@ export default async function NyBokningPage(props: { searchParams?: Promise<{ ku
       id: k.id,
       label: k.foretagsnamn || `${k.fornamn} ${k.efternamn || ''}`.trim(),
       arForetagskund: !!k.ar_foretagskund,
+      harEmail: !!(k.email && String(k.email).trim()),
+      harTelefon: !!(k.telefon && String(k.telefon).trim()),
     };
   });
   const typer = (typerRaw || []) as { id: string; namn: string }[];
@@ -39,7 +41,7 @@ export default async function NyBokningPage(props: { searchParams?: Promise<{ ku
         <h1 className="font-serif text-[42px] font-light leading-tight">Ny bokning</h1>
       </div>
 
-      <NyBokningForm kunder={kunder} typer={typer} platser={platser} valdKundId={sp.kund || null} />
+      <NyBokningForm kunder={kunder} typer={typer} platser={platser} valdKundId={sp.kund || null} fel={sp.fel || null} />
     </>
   );
 }
