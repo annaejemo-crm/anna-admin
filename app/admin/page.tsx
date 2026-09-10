@@ -112,6 +112,29 @@ export default async function DashboardPage() {
     return b.status !== 'avbokad' && harledAvtalStatus(b) === 'inget';
   });
 
+  /* Oppna forfragningar: bokningar med status forfragan, oftast utan datum.
+     Aldst forst, sa den som vantat langst hamnar overst. */
+  const { data: forfragningarRaw } = await supabase
+    .from('bokningar')
+    .select('id, created_at, datum, kalla, kund_id, kund:kunder(fornamn, efternamn, foretagsnamn), fotograferingstyp:fotograferingstyper(namn)')
+    .eq('status', 'forfragan')
+    .order('created_at', { ascending: true })
+    .limit(20);
+  const forfragningar = (forfragningarRaw || []) as any[];
+
+  /* Foretag att folja upp: uppfoljningsdatum inom sju dagar eller passerat.
+     Faltet kommer med migration 0012, sa fel har betyder tom lista, inte krasch. */
+  const { data: foretagRaw } = await supabase
+    .from('kunder')
+    .select('id, foretagsnamn, prospekt_lage, nasta_steg, uppfoljning_datum')
+    .eq('ar_foretagskund', true)
+    .not('uppfoljning_datum', 'is', null)
+    .lte('uppfoljning_datum', weekFromNow.toISOString().slice(0, 10))
+    .or('prospekt_lage.is.null,prospekt_lage.neq.avslutad')
+    .order('uppfoljning_datum', { ascending: true })
+    .limit(20);
+  const foretagAttFoljaUpp = (foretagRaw || []) as any[];
+
   /* Bildpaket-lista för inline-val på pågående-tabellen */
   const { data: paketLista } = await supabase
     .from('bildpaket')
@@ -192,6 +215,71 @@ export default async function DashboardPage() {
           )}
         </div>
       </section>
+
+      {(forfragningar.length > 0 || foretagAttFoljaUpp.length > 0) && (
+        <div className={`grid gap-6 mb-12 ${forfragningar.length > 0 && foretagAttFoljaUpp.length > 0 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+          {forfragningar.length > 0 && (
+            <section>
+              <div className="flex items-end justify-between mb-1">
+                <h2 className="text-2xl font-serif">Öppna förfrågningar</h2>
+                <Link href="/admin/forfragningar" className="text-sm text-ink-muted hover:text-ink">Alla förfrågningar</Link>
+              </div>
+              <p className="text-ink-muted text-[13px] mb-5">Kunder som hört av sig men inte bokat än. Äldst överst.</p>
+              <div className="bg-white border border-line-soft rounded-sm overflow-hidden">
+                <table className="w-full">
+                  <thead>
+                    <tr><Th>Inkom</Th><Th>Kund</Th><Th>Typ</Th><Th>Källa</Th><Th right>Dagar</Th></tr>
+                  </thead>
+                  <tbody>
+                    {forfragningar.map(function(b: any) {
+                      const namn = b.kund?.foretagsnamn || `${b.kund?.fornamn || ''} ${b.kund?.efternamn || ''}`.trim();
+                      const dagar = dagarSedan(b.created_at);
+                      return (
+                        <tr key={b.id} className="border-b border-line-soft last:border-0 hover:bg-bg">
+                          <Td className="font-mono text-[12px] text-ink-muted whitespace-nowrap">{formatDate(b.created_at)}</Td>
+                          <Td className="font-serif text-[17px]"><Link href={`/admin/kunder/${b.kund_id}`}>{namn}</Link></Td>
+                          <Td>{b.fotograferingstyp?.namn || '–'}</Td>
+                          <Td>{b.kalla || '–'}</Td>
+                          <Td right className={`font-mono text-[12.5px] ${dagar >= 7 ? 'text-accent' : 'text-ink-muted'}`}>{dagar}</Td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
+
+          {foretagAttFoljaUpp.length > 0 && (
+            <section>
+              <div className="flex items-end justify-between mb-1">
+                <h2 className="text-2xl font-serif">Företag att följa upp</h2>
+                <Link href="/admin/foretag" className="text-sm text-ink-muted hover:text-ink">Alla företag</Link>
+              </div>
+              <p className="text-ink-muted text-[13px] mb-5">Uppföljning inom sju dagar eller som redan passerat.</p>
+              <div className="bg-white border border-line-soft rounded-sm overflow-hidden">
+                <table className="w-full">
+                  <thead>
+                    <tr><Th>Datum</Th><Th>Företag</Th><Th>Nästa steg</Th></tr>
+                  </thead>
+                  <tbody>
+                    {foretagAttFoljaUpp.map(function(k: any) {
+                      const passerat = k.uppfoljning_datum < idag;
+                      return (
+                        <tr key={k.id} className="border-b border-line-soft last:border-0 hover:bg-bg">
+                          <Td className={`font-mono text-[12px] whitespace-nowrap ${passerat ? 'text-accent' : 'text-ink-muted'}`}>{formatDate(k.uppfoljning_datum)}</Td>
+                          <Td className="font-serif text-[17px]"><Link href={`/admin/kunder/${k.id}`}>{k.foretagsnamn}</Link></Td>
+                          <Td className="text-ink-muted">{k.nasta_steg || '–'}</Td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
+        </div>
+      )}
 
       {utanAvtal.length > 0 && (
         <section className="mb-12">
