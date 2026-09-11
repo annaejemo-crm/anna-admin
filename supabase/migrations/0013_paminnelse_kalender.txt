@@ -1,0 +1,18 @@
+-- 0013: Kundpåminnelse och kalenderprenumeration (steg 4 i CRM-planen, 2026-09-11)
+-- Körs i Supabase SQL Editor. Går att köra flera gånger utan skada.
+
+-- Automatisk påminnelse till kunden tre dagar före fotograferingen.
+alter table public.bokningar add column if not exists paminnelse_kund_skickat_at timestamptz;
+alter table public.bokningar add column if not exists skippa_paminnelse_kund boolean not null default false;
+
+-- Hemlig nyckel för kalenderprenumerationen. Adressen /api/kalender/<nyckel>
+-- ger en ICS-fil som Annas kalender hämtar själv. Byts när som helst från CRM:et.
+create table if not exists public.kalender_prenumeration (
+  user_id     uuid primary key references auth.users(id) on delete cascade,
+  nyckel      text not null unique,
+  created_at  timestamptz not null default now()
+);
+alter table public.kalender_prenumeration enable row level security;
+drop policy if exists "egen kalender" on public.kalender_prenumeration;
+create policy "egen kalender" on public.kalender_prenumeration
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
