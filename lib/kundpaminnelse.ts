@@ -2,7 +2,8 @@
    Kundpåminnelse: mejl till kunden några dagar före fotograferingen.
 
    Det här är det enda i systemet som går till en kund utan att Anna
-   klickar. Reglerna: bara riktiga bokningar med datum och e-post, bara
+   klickar. Reglerna: bara gravidfotograferingar, bara riktiga bokningar
+   med datum och e-post, bara
    en gång per bokning, och Anna kan skippa eller skicka i förväg från
    dashboarden. Texten kommer från mallen med kategori "paminnelse"
    under Mailmallar, så Anna äger formuleringen.
@@ -12,7 +13,16 @@ import { resolveTemplate } from '@/lib/types';
 import { skickaMail } from '@/lib/mail';
 
 /* Så många dagar före fotograferingen mejlet går ut. */
-export const DAGAR_FORE = 3;
+export const DAGAR_FORE = 2;
+
+/* Bara dessa fotograferingstyper får påminnelsen. Beslut av Anna 2026-09-11:
+   enbart gravidkunder, ingen annan. Jämförs utan hänsyn till stora bokstäver. */
+export const PAMINNELSE_TYPER = ['gravid'];
+
+export function farPaminnelse(b: any): boolean {
+  const typ = String(b?.fotograferingstyp?.namn || '').toLowerCase().trim();
+  return PAMINNELSE_TYPER.indexOf(typ) !== -1;
+}
 
 const EJ_BOKNING = ['forfragan', 'tackade_nej', 'avbokad'];
 const MANADER = ['januari', 'februari', 'mars', 'april', 'maj', 'juni', 'juli', 'augusti', 'september', 'oktober', 'november', 'december'];
@@ -85,6 +95,7 @@ export async function hamtaKandidater(supabase: any, nu?: Date, dagarFram: numbe
   for (const b of (data || []) as any[]) {
     if (EJ_BOKNING.indexOf(b.status) !== -1) continue;
     if (!b.datum) continue;
+    if (!farPaminnelse(b)) continue;
     lista.push({
       id: String(b.id),
       user_id: String(b.user_id),
