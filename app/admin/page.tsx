@@ -227,7 +227,7 @@ export default async function DashboardPage() {
         <section className="mb-12">
           <h2 className="text-2xl font-serif mb-1">Påminnelser till kunder</h2>
           <p className="text-ink-muted text-[13px] mb-5">
-            Går ut automatiskt {DAGAR_FORE} dagar före fotograferingen, från mallen Påminnelse innan fotografering under Mailmallar. Skippa om kunden inte ska ha någon, eller skicka nu om du vill.
+            Går ut automatiskt {DAGAR_FORE} dagar före fotograferingen, bara till gravidkunder, från mallen Påminnelse innan fotografering under Mailmallar. Skippa om kunden inte ska ha någon, eller skicka nu om du vill.
           </p>
           <div className="bg-white border border-line-soft rounded-sm overflow-hidden">
             <table className="w-full">
