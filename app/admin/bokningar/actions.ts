@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { skickaMail } from '@/lib/mail';
+import { skickaPaminnelseFor } from '@/lib/kundpaminnelse';
 
 const GOOGLE_REVIEW_URL = 'https://g.page/r/CYzaSIzh9wxIEBM/review';
 const RECENSIONSMAIL_AMNE = 'Tack för ditt förtroende';
@@ -554,6 +555,55 @@ export async function avgorForfragan(formData: FormData) {
   revalidatePath('/admin/kunder');
 
   if (beslut === 'bokad') redirect(`/admin/bokningar/${id}/redigera`);
+}
+
+/**
+ * Kundpaminnelse infor fotografering, styrs fran dashboarden.
+ * "skicka" gar ivag direkt oavsett hur manga dagar som ar kvar,
+ * "skippa" gor att cron inte skickar nagot for den bokningen,
+ * "angra" tar bort skippet sa den gar ut som vanligt.
+ */
+export async function hanteraKundpaminnelse(formData: FormData) {
+  const supabase = await createClient();
+  const id = String(formData.get('id') || '');
+  const beslut = String(formData.get('beslut') || '');
+  if (!id) return;
+
+  if (beslut === 'skippa') {
+    await supabase.from('bokningar').update({ skippa_paminnelse_kund: true }).eq('id', id);
+  } else if (beslut === 'angra') {
+    await supabase.from('bokningar').update({ skippa_paminnelse_kund: false }).eq('id', id);
+  } else if (beslut === 'skicka') {
+    const { data: b } = await supabase
+      .from('bokningar')
+      .select('id, user_id, kund_id, datum, tid, plats, adress, status, bokningsavgift_kr, bildpaket_namn, bildpaket_kr, paminnelse_kund_skickat_at, skippa_paminnelse_kund, kund:kunder(fornamn, efternamn, foretagsnamn, email), fotograferingstyp:fotograferingstyper(namn)')
+      .eq('id', id)
+      .maybeSingle();
+    if (!b || !b.datum) return;
+    const kundObj: any = b.kund;
+    await skickaPaminnelseFor(supabase, {
+      id: String(b.id),
+      user_id: String(b.user_id),
+      kund_id: b.kund_id ? String(b.kund_id) : null,
+      kund: kundNamnFor(kundObj),
+      email: kundObj?.email || null,
+      datum: b.datum,
+      tid: b.tid || null,
+      plats: b.plats || null,
+      skickasDatum: b.datum,
+      skickat_at: b.paminnelse_kund_skickat_at || null,
+      skippad: !!b.skippa_paminnelse_kund,
+      bokning: b,
+    });
+  }
+
+  revalidatePath('/admin');
+  revalidatePath('/admin/kunder');
+}
+
+function kundNamnFor(k: any): string {
+  if (!k) return 'Okänd kund';
+  return k.foretagsnamn || `${k.fornamn || ''} ${k.efternamn || ''}`.trim() || 'Okänd kund';
 }
 
 export async function updateKund(formData: FormData) {
