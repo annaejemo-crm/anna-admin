@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { skickaMail } from '@/lib/mail';
-import { skickaPaminnelseFor } from '@/lib/kundpaminnelse';
+import { skickaPaminnelseFor, farPaminnelse } from '@/lib/kundpaminnelse';
 
 const GOOGLE_REVIEW_URL = 'https://g.page/r/CYzaSIzh9wxIEBM/review';
 const RECENSIONSMAIL_AMNE = 'Tack för ditt förtroende';
@@ -579,7 +579,7 @@ export async function hanteraKundpaminnelse(formData: FormData) {
       .select('id, user_id, kund_id, datum, tid, plats, adress, status, bokningsavgift_kr, bildpaket_namn, bildpaket_kr, paminnelse_kund_skickat_at, skippa_paminnelse_kund, kund:kunder(fornamn, efternamn, foretagsnamn, email), fotograferingstyp:fotograferingstyper(namn)')
       .eq('id', id)
       .maybeSingle();
-    if (!b || !b.datum) return;
+    if (!b || !b.datum || !farPaminnelse(b)) return;
     const kundObj: any = b.kund;
     await skickaPaminnelseFor(supabase, {
       id: String(b.id),
