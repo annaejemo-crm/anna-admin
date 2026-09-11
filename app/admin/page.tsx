@@ -3,7 +3,8 @@ import { StatusPill } from '@/components/StatusPill';
 import type { DashboardSummary, BokningExpanderad } from '@/lib/types';
 import { harledBokningStatus, harledAvtalStatus, RECENSION_FRAN } from '@/lib/types';
 import { AvtalPill } from '@/components/AvtalPill';
-import { gaVidare, skickaPaketPaminnelse, skickaRecensionsmail, skippaRecensionsmail } from './bokningar/actions';
+import { gaVidare, skickaPaketPaminnelse, skickaRecensionsmail, skippaRecensionsmail, hanteraKundpaminnelse } from './bokningar/actions';
+import { hamtaKandidater, DAGAR_FORE, idagStockholm } from '@/lib/kundpaminnelse';
 import { setBildpaket, togglePaid } from './kunder/actions';
 import Link from 'next/link';
 
@@ -135,6 +136,12 @@ export default async function DashboardPage() {
     .limit(20);
   const foretagAttFoljaUpp = (foretagRaw || []) as any[];
 
+  /* Kundpaminnelser infor fotograferingar de narmaste sju dagarna.
+     Kolumnerna kommer med migration 0013, fel betyder tom lista. */
+  let kundpaminnelser: Awaited<ReturnType<typeof hamtaKandidater>> = [];
+  try { kundpaminnelser = await hamtaKandidater(supabase, now, 7); } catch { kundpaminnelser = []; }
+  const idagSthlm = idagStockholm(now);
+
   /* Bildpaket-lista för inline-val på pågående-tabellen */
   const { data: paketLista } = await supabase
     .from('bildpaket')
@@ -215,6 +222,65 @@ export default async function DashboardPage() {
           )}
         </div>
       </section>
+
+      {kundpaminnelser.length > 0 && (
+        <section className="mb-12">
+          <h2 className="text-2xl font-serif mb-1">Påminnelser till kunder</h2>
+          <p className="text-ink-muted text-[13px] mb-5">
+            Går ut automatiskt {DAGAR_FORE} dagar före fotograferingen, från mallen Påminnelse innan fotografering under Mailmallar. Skippa om kunden inte ska ha någon, eller skicka nu om du vill.
+          </p>
+          <div className="bg-white border border-line-soft rounded-sm overflow-hidden">
+            <table className="w-full">
+              <thead>
+                <tr><Th>Foto</Th><Th>Kund</Th><Th>E-post</Th><Th>Påminnelse</Th><Th /></tr>
+              </thead>
+              <tbody>
+                {kundpaminnelser.map(function(k) {
+                  let lage: React.ReactNode;
+                  if (k.skickat_at) lage = <span className="text-positive">Skickad {formatDate(k.skickat_at.slice(0, 10))}</span>;
+                  else if (k.skippad) lage = <span className="text-ink-faint">Skippad</span>;
+                  else if (!k.email) lage = <span className="text-accent">Saknar e-post</span>;
+                  else if (k.skickasDatum <= idagSthlm) lage = <span className="text-warn">Går ut vid nästa körning</span>;
+                  else lage = <span className="text-ink-muted">Skickas {formatDate(k.skickasDatum)}</span>;
+                  return (
+                    <tr key={k.id} className="border-b border-line-soft last:border-0 hover:bg-bg">
+                      <Td className="font-mono text-[12px] text-ink-muted whitespace-nowrap">{formatDate(k.datum)}{k.tid ? ' ' + String(k.tid).slice(0, 5) : ''}</Td>
+                      <Td className="font-serif text-[17px]">{k.kund_id ? <Link href={`/admin/kunder/${k.kund_id}`}>{k.kund}</Link> : k.kund}</Td>
+                      <Td className="text-[12.5px] text-ink-muted">{k.email || '–'}</Td>
+                      <Td className="text-[13px]">{lage}</Td>
+                      <Td>
+                        <div className="flex gap-2 justify-end whitespace-nowrap">
+                          {!k.skickat_at && !k.skippad && k.email && (
+                            <form action={hanteraKundpaminnelse}>
+                              <input type="hidden" name="id" value={k.id} />
+                              <input type="hidden" name="beslut" value="skicka" />
+                              <button type="submit" className="text-[11px] px-2.5 py-1 border border-line-soft rounded-sm hover:border-ink hover:bg-bg">Skicka nu</button>
+                            </form>
+                          )}
+                          {!k.skickat_at && !k.skippad && (
+                            <form action={hanteraKundpaminnelse}>
+                              <input type="hidden" name="id" value={k.id} />
+                              <input type="hidden" name="beslut" value="skippa" />
+                              <button type="submit" className="text-[11px] px-2.5 py-1 text-ink-muted hover:text-ink">Skippa</button>
+                            </form>
+                          )}
+                          {!k.skickat_at && k.skippad && (
+                            <form action={hanteraKundpaminnelse}>
+                              <input type="hidden" name="id" value={k.id} />
+                              <input type="hidden" name="beslut" value="angra" />
+                              <button type="submit" className="text-[11px] px-2.5 py-1 text-ink-muted hover:text-ink">Ångra</button>
+                            </form>
+                          )}
+                        </div>
+                      </Td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       {(forfragningar.length > 0 || foretagAttFoljaUpp.length > 0) && (
         <div className={`grid gap-6 mb-12 ${forfragningar.length > 0 && foretagAttFoljaUpp.length > 0 ? 'grid-cols-2' : 'grid-cols-1'}`}>
