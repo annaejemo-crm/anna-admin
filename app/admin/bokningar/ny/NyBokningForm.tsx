@@ -23,7 +23,8 @@ const HUR_HITTADE_FORSLAG = ['Instagram', 'Google', 'Rekommendation', 'Återkomm
 type KundOption = { id: string; label: string; arForetagskund?: boolean; harEmail?: boolean; harTelefon?: boolean };
 
 /**
- * Obligatoriska falt sedan 2026-09-10: kalla, e-post, telefon, datum och klockslag.
+ * Obligatoriska falt sedan 2026-09-10: kalla, e-post, datum och klockslag.
+ * Telefon ar valfritt sedan 2026-09-16 (Annas beslut), faltet finns kvar men kravs inte.
  * Webblasaren stoppar formularet via required, och skapaBokning kontrollerar
  * samma sak pa servern och skickar tillbaka hit med ?fel= om nagot saknas.
  * Undantag: ar status Forfragan ar datum och tid valfria, en forfragan har
@@ -260,7 +261,7 @@ export function NyBokningForm(props: { kunder: KundOption[]; typer: { id: string
             {(saknarEmail || saknarTelefon) && (
               <div className="mt-5 space-y-3">
                 <p className="text-sm text-ink-muted">
-                  Kunden saknar {saknarEmail && saknarTelefon ? 'e-post och telefon' : saknarEmail ? 'e-post' : 'telefon'}. Fyll i så sparas det på kunden.
+                  Kunden saknar {saknarEmail && saknarTelefon ? 'e-post och telefon' : saknarEmail ? 'e-post' : 'telefon'}. Fyll i så sparas det på kunden{saknarTelefon ? ', telefon är frivilligt' : ''}.
                 </p>
                 <Row>
                   {saknarEmail && (
@@ -269,8 +270,8 @@ export function NyBokningForm(props: { kunder: KundOption[]; typer: { id: string
                     </Field>
                   )}
                   {saknarTelefon && (
-                    <Field label="Telefon" kravs>
-                      <input type="tel" name="telefon" className={inputStyle} required />
+                    <Field label="Telefon">
+                      <input type="tel" name="telefon" className={inputStyle} />
                     </Field>
                   )}
                 </Row>
@@ -304,8 +305,8 @@ export function NyBokningForm(props: { kunder: KundOption[]; typer: { id: string
               <Field label="Email" kravs>
                 <input type="email" name="email" className={inputStyle} required />
               </Field>
-              <Field label="Telefon" kravs>
-                <input type="tel" name="telefon" className={inputStyle} required />
+              <Field label="Telefon">
+                <input type="tel" name="telefon" className={inputStyle} />
               </Field>
             </Row>
             <Field label="Hur hittade kunden mig">
