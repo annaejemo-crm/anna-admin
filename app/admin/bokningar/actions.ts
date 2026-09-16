@@ -393,7 +393,8 @@ export async function skapaBokning(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
 
-  // Obligatoriskt sedan 2026-09-10: kalla, e-post, telefon, datum och klockslag.
+  // Obligatoriskt sedan 2026-09-10: kalla, e-post, datum och klockslag.
+  // Telefon ar valfritt sedan 2026-09-16, sparas om det fylls i.
   // Saknas nagot skickas Anna tillbaka till formularet med ett meddelande,
   // inget sparas. Gamla bokningar rors inte, kravet galler bara nya.
   // En forfragan (status forfragan) far sakna datum och tid.
@@ -433,7 +434,6 @@ export async function skapaBokning(formData: FormData) {
     const nyEmail = (kund.email && String(kund.email).trim()) ? null : email;
     const nyTelefon = (kund.telefon && String(kund.telefon).trim()) ? null : telefon;
     if (!(kund.email && String(kund.email).trim()) && !nyEmail) saknas.push('e-post');
-    if (!(kund.telefon && String(kund.telefon).trim()) && !nyTelefon) saknas.push('telefon');
     if (saknas.length > 0) avbryt('fyll i ' + saknas.join(', ') + '.');
 
     if (nyEmail || nyTelefon) {
@@ -451,7 +451,6 @@ export async function skapaBokning(formData: FormData) {
 
     if (!fornamn) saknas.unshift('förnamn');
     if (!email) saknas.push('e-post');
-    if (!telefon) saknas.push('telefon');
     if (saknas.length > 0) avbryt('fyll i ' + saknas.join(', ') + '.');
 
     const { data: nyKund } = await supabase.from('kunder').insert({
