@@ -144,6 +144,18 @@ export default async function DashboardPage() {
     .limit(20);
   const foretagAttFoljaUpp = (foretagRaw || []) as any[];
 
+  /* Webbuppdrag att gora: uppfoljning inom sju dagar eller passerad, samt
+     klara uppdrag som inte fakturerats. Tabellen kommer med migration 0014,
+     fel har betyder tom lista. */
+  const { data: webbRaw } = await supabase
+    .from('webbuppdrag')
+    .select('id, kund_id, titel, lage, nasta_steg, uppfoljning_datum, klar_datum, pris_kr, kund:kunder(fornamn, efternamn, foretagsnamn)')
+    .not('lage', 'in', '("betald","tackade_nej")')
+    .or(`uppfoljning_datum.lte.${weekFromNow.toISOString().slice(0, 10)},lage.eq.klar`)
+    .order('uppfoljning_datum', { ascending: true, nullsFirst: false })
+    .limit(20);
+  const webbAttGora = (webbRaw || []) as any[];
+
   /* Kundpaminnelser infor fotograferingar de narmaste sju dagarna.
      Kolumnerna kommer med migration 0013, fel betyder tom lista. */
   let kundpaminnelser: Awaited<ReturnType<typeof hamtaKandidater>> = [];
@@ -290,8 +302,8 @@ export default async function DashboardPage() {
         </section>
       )}
 
-      {(forfragningar.length > 0 || foretagAttFoljaUpp.length > 0) && (
-        <div className={`grid gap-6 mb-12 ${forfragningar.length > 0 && foretagAttFoljaUpp.length > 0 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+      {(forfragningar.length > 0 || foretagAttFoljaUpp.length > 0 || webbAttGora.length > 0) && (
+        <div className={`grid gap-6 mb-12 ${[forfragningar.length > 0, foretagAttFoljaUpp.length > 0, webbAttGora.length > 0].filter(Boolean).length >= 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>
           {forfragningar.length > 0 && (
             <section>
               <div className="flex items-end justify-between mb-1">
@@ -344,6 +356,37 @@ export default async function DashboardPage() {
                           <Td className={`font-mono text-[12px] whitespace-nowrap ${passerat ? 'text-accent' : 'text-ink-muted'}`}>{formatDate(k.uppfoljning_datum)}</Td>
                           <Td className="font-serif text-[17px]"><Link href={`/admin/kunder/${k.id}`}>{k.foretagsnamn}</Link></Td>
                           <Td className="text-ink-muted">{k.nasta_steg || '–'}</Td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
+
+          {webbAttGora.length > 0 && (
+            <section>
+              <div className="flex items-end justify-between mb-1">
+                <h2 className="text-2xl font-serif">Webbuppdrag att göra</h2>
+                <Link href="/admin/webbuppdrag" className="text-sm text-ink-muted hover:text-ink">Alla webbuppdrag</Link>
+              </div>
+              <p className="text-ink-muted text-[13px] mb-5">Uppföljning inom sju dagar, och klara uppdrag som väntar på faktura.</p>
+              <div className="bg-white border border-line-soft rounded-sm overflow-hidden">
+                <table className="w-full">
+                  <thead>
+                    <tr><Th>Datum</Th><Th>Kund</Th><Th>Uppdrag</Th><Th>Nästa steg</Th></tr>
+                  </thead>
+                  <tbody>
+                    {webbAttGora.map(function(u: any) {
+                      const namn = u.kund?.foretagsnamn || `${u.kund?.fornamn || ''} ${u.kund?.efternamn || ''}`.trim();
+                      const passerat = u.uppfoljning_datum && u.uppfoljning_datum < idag;
+                      return (
+                        <tr key={u.id} className="border-b border-line-soft last:border-0 hover:bg-bg">
+                          <Td className={`font-mono text-[12px] whitespace-nowrap ${passerat ? 'text-accent' : 'text-ink-muted'}`}>{formatDate(u.uppfoljning_datum || u.klar_datum)}</Td>
+                          <Td className="font-serif text-[17px]"><Link href={`/admin/kunder/${u.kund_id}`}>{namn}</Link></Td>
+                          <Td>{u.titel}</Td>
+                          <Td className="text-ink-muted">{u.nasta_steg || (u.lage === 'klar' ? 'Att fakturera' : '–')}</Td>
                         </tr>
                       );
                     })}
