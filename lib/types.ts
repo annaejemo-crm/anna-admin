@@ -59,6 +59,72 @@ export const PROSPEKT_LABELS: Record<ProspektLage, string> = {
 };
 
 /**
+ * Webbuppdrag (tabellen webbuppdrag, migration 0014, 2026-09-23). Annas
+ * webb- och SEO-jobb at andra foretagare. Gors hemifran, ingen plats och
+ * ingen fotograferingstyp, darfor egen tabell och inte bokningar.
+ */
+export type WebbLage = 'forfragan' | 'offert_skickad' | 'pagar' | 'klar' | 'fakturerad' | 'betald' | 'tackade_nej';
+
+export const WEBB_LAGEN: { kod: WebbLage; label: string }[] = [
+  { kod: 'forfragan', label: 'Förfrågan' },
+  { kod: 'offert_skickad', label: 'Offert skickad' },
+  { kod: 'pagar', label: 'Pågår' },
+  { kod: 'klar', label: 'Klar' },
+  { kod: 'fakturerad', label: 'Fakturerad' },
+  { kod: 'betald', label: 'Betald' },
+  { kod: 'tackade_nej', label: 'Tackade nej' },
+];
+
+export const WEBB_LABELS: Record<WebbLage, string> = {
+  forfragan: 'Förfrågan',
+  offert_skickad: 'Offert skickad',
+  pagar: 'Pågår',
+  klar: 'Klar',
+  fakturerad: 'Fakturerad',
+  betald: 'Betald',
+  tackade_nej: 'Tackade nej',
+};
+
+/* Lagen som raknas som ett riktigt uppdrag i ekonomi och statistik */
+export const WEBB_RIKTIGA: WebbLage[] = ['pagar', 'klar', 'fakturerad', 'betald'];
+
+export type WebbTyp = 'omdesign' | 'uppbyggnad' | 'seo_analys' | 'seo_lista' | 'annat';
+
+export const WEBB_TYPER: { kod: WebbTyp; label: string }[] = [
+  { kod: 'uppbyggnad', label: 'Ny sajt' },
+  { kod: 'omdesign', label: 'Omdesign' },
+  { kod: 'seo_analys', label: 'SEO-analys' },
+  { kod: 'seo_lista', label: 'SEO-lista' },
+  { kod: 'annat', label: 'Annat' },
+];
+
+export const WEBB_TYP_LABELS: Record<WebbTyp, string> = {
+  uppbyggnad: 'Ny sajt',
+  omdesign: 'Omdesign',
+  seo_analys: 'SEO-analys',
+  seo_lista: 'SEO-lista',
+  annat: 'Annat',
+};
+
+export type Webbuppdrag = {
+  id: string;
+  kund_id: string;
+  titel: string;
+  typ: WebbTyp;
+  lage: WebbLage;
+  hemsida: string | null;
+  pris_kr: number | null;
+  start_datum: string | null;
+  klar_datum: string | null;
+  fakturerad_datum: string | null;
+  betald_datum: string | null;
+  nasta_steg: string | null;
+  uppfoljning_datum: string | null;
+  anteckning: string | null;
+  created_at: string;
+};
+
+/**
  * Härleder status från en boknings data så vi slipper hålla status-fältet manuellt synkat.
  * Flöde: bokad → väntar_galleri (fotografering passerat) → galleri_skickat → klar (bildpaket valt).
  * Avbokad behålls om explicit satt.
