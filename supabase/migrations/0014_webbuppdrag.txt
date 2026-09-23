@@ -1,0 +1,121 @@
+-- 0014: Webbuppdrag (2026-09-23)
+-- Körs i Supabase SQL Editor. Går att köra flera gånger utan skada.
+--
+-- Annas webb- och SEO-uppdrag åt andra företagare görs hemifrån och är
+-- inga fotograferingar, så de får en egen tabell i stället för att ligga
+-- som bokningar med plats och fotograferingstyp. Kunden är en vanlig rad
+-- i kunder, markerad som webbkund.
+
+alter table public.kunder add column if not exists ar_webbkund boolean not null default false;
+
+create table if not exists public.webbuppdrag (
+  id                uuid primary key default gen_random_uuid(),
+  user_id           uuid not null references auth.users(id) on delete cascade,
+  kund_id           uuid not null references public.kunder(id) on delete cascade,
+  titel             text not null,
+  typ               text not null default 'seo_analys',
+  lage              text not null default 'forfragan',
+  hemsida           text,
+  pris_kr           integer,
+  start_datum       date,
+  klar_datum        date,
+  fakturerad_datum  date,
+  betald_datum      date,
+  nasta_steg        text,
+  uppfoljning_datum date,
+  anteckning        text,
+  created_at        timestamptz not null default now(),
+  updated_at        timestamptz not null default now()
+);
+
+-- Typ: omdesign, uppbyggnad, seo_analys, seo_lista, annat
+alter table public.webbuppdrag drop constraint if exists webbuppdrag_typ_check;
+alter table public.webbuppdrag add constraint webbuppdrag_typ_check
+  check (typ in ('omdesign', 'uppbyggnad', 'seo_analys', 'seo_lista', 'annat'));
+
+-- Läge: forfragan, offert_skickad, pagar, klar, fakturerad, betald, tackade_nej
+alter table public.webbuppdrag drop constraint if exists webbuppdrag_lage_check;
+alter table public.webbuppdrag add constraint webbuppdrag_lage_check
+  check (lage in ('forfragan', 'offert_skickad', 'pagar', 'klar', 'fakturerad', 'betald', 'tackade_nej'));
+
+create index if not exists webbuppdrag_user_idx on public.webbuppdrag (user_id, lage);
+create index if not exists webbuppdrag_kund_idx on public.webbuppdrag (kund_id);
+
+alter table public.webbuppdrag enable row level security;
+drop policy if exists "egna webbuppdrag" on public.webbuppdrag;
+create policy "egna webbuppdrag" on public.webbuppdrag
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- Befintliga webbkunder ur vaulten, Annas beslut 2026-09-23. Pris, faktura
+-- och betalning fyller Anna i själv i CRM:et. Systemet har en användare,
+-- så user_id tas från den. Körs bara om kunden inte redan finns.
+do $$
+declare
+  uid uuid;
+  kid uuid;
+begin
+  select id into uid from auth.users order by created_at limit 1;
+  if uid is null then return; end if;
+
+  -- Vevra Media, bröllopsfotograf i Bergen, sajt ombyggd av Anna, klar början av augusti 2026
+  select id into kid from public.kunder where user_id = uid and foretagsnamn = 'Vevra Media' limit 1;
+  if kid is null then
+    insert into public.kunder (user_id, fornamn, foretagsnamn, ar_webbkund, hur_hittade)
+    values (uid, 'Vevra Media', 'Vevra Media', true, 'Webbuppdrag')
+    returning id into kid;
+  else
+    update public.kunder set ar_webbkund = true where id = kid;
+  end if;
+  if not exists (select 1 from public.webbuppdrag where kund_id = kid) then
+    insert into public.webbuppdrag (user_id, kund_id, titel, typ, lage, hemsida, start_datum, klar_datum, nasta_steg, anteckning)
+    values (uid, kid, 'Ombyggnad av hela sajten', 'uppbyggnad', 'klar', 'vevramedia.no', '2026-07-01', '2026-08-05',
+      'Interna länkar till /bryllupsfotograf-bergen och genomgång av title och H1, ungefär en timme',
+      'Bröllopsfotograf i Bergen. Tre veckor efter lanseringen position 11 för "bryllupsfotograf bergen", gamla sajten låg på sida 4 till 5. Kommunikation på svenska och norska. Vänta några veckor efter lanseringen innan fler SEO-justeringar.');
+  end if;
+
+  -- Inger Paulsen Fotografi, bröllopsfotograf i Bergen, WordPress och Elementor, klar augusti 2026
+  select id into kid from public.kunder where user_id = uid and foretagsnamn = 'Inger Paulsen Fotografi' limit 1;
+  if kid is null then
+    insert into public.kunder (user_id, fornamn, efternamn, foretagsnamn, ar_webbkund, hur_hittade)
+    values (uid, 'Inger', 'Paulsen', 'Inger Paulsen Fotografi', true, 'Webbuppdrag')
+    returning id into kid;
+  else
+    update public.kunder set ar_webbkund = true where id = kid;
+  end if;
+  if not exists (select 1 from public.webbuppdrag where kund_id = kid) then
+    insert into public.webbuppdrag (user_id, kund_id, titel, typ, lage, start_datum, klar_datum, anteckning)
+    values (uid, kid, 'Ombyggnad i WordPress och Elementor', 'uppbyggnad', 'klar', '2026-07-01', '2026-08-31',
+      'Bröllopsfotograf i Bergen. Detaljer i vaulten under Webbuppdrag.');
+  end if;
+
+  -- Hanne Barane, fotograf på Stord, SEO-genomgång levererad september 2026, faktura väntar
+  select id into kid from public.kunder where user_id = uid and foretagsnamn = 'Hanne Barane Foto' limit 1;
+  if kid is null then
+    insert into public.kunder (user_id, fornamn, efternamn, foretagsnamn, ar_webbkund, hur_hittade)
+    values (uid, 'Hanne', 'Barane', 'Hanne Barane Foto', true, 'Webbuppdrag')
+    returning id into kid;
+  else
+    update public.kunder set ar_webbkund = true where id = kid;
+  end if;
+  if not exists (select 1 from public.webbuppdrag where kund_id = kid) then
+    insert into public.webbuppdrag (user_id, kund_id, titel, typ, lage, hemsida, start_datum, klar_datum, nasta_steg, uppfoljning_datum, anteckning)
+    values (uid, kid, 'SEO-genomgång med arbetslista', 'seo_analys', 'klar', 'hannebaranefoto.com', '2026-09-16', '2026-09-23',
+      'Skicka faktura när faktureringsuppgifterna kommer', '2026-09-30',
+      'Fotograf på Stord. Förfrågan inkom 16 september 2026, genomgången på femton sidor klar 23 september. Kvar: faktura och Hannes val av väg efteråt.');
+  end if;
+
+  -- Hanna Karlsson, Neas Studios, hjälp med hemsidan, avslutat
+  select id into kid from public.kunder where user_id = uid and foretagsnamn = 'Neas Studios' limit 1;
+  if kid is null then
+    insert into public.kunder (user_id, fornamn, efternamn, foretagsnamn, ar_webbkund, hur_hittade)
+    values (uid, 'Hanna', 'Karlsson', 'Neas Studios', true, 'Webbuppdrag')
+    returning id into kid;
+  else
+    update public.kunder set ar_webbkund = true where id = kid;
+  end if;
+  if not exists (select 1 from public.webbuppdrag where kund_id = kid) then
+    insert into public.webbuppdrag (user_id, kund_id, titel, typ, lage, anteckning)
+    values (uid, kid, 'Hjälp med hemsidan', 'annat', 'klar',
+      'Uppdraget räknas som avslutat, inget mer arbete utan ny överenskommelse.');
+  end if;
+end $$;
