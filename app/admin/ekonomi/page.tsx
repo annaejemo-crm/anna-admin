@@ -1,4 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
+import Link from 'next/link';
+import { WEBB_LABELS, WEBB_RIKTIGA, WEBB_TYP_LABELS, type WebbLage, type WebbTyp } from '@/lib/types';
 
 type BokningRow = {
   id: string;
@@ -61,6 +63,22 @@ export default async function EkonomiPage(props: { searchParams?: Promise<{ ar?:
   const { data: kunderRaw } = await supabase
     .from('kunder')
     .select('id, foretagsnamn, ar_foretagskund');
+
+  /* Webbuppdrag: hemsidor och SEO at andra foretagare, egen tabell sedan
+     migration 0014. Raknas till det ar uppdraget blev klart, annars startade,
+     annars kom in. Bara pagaende, klara, fakturerade och betalda raknas. */
+  const { data: webbRaw } = await supabase
+    .from('webbuppdrag')
+    .select('id, titel, typ, lage, pris_kr, start_datum, klar_datum, betald_datum, created_at, kund:kunder(fornamn, efternamn, foretagsnamn)')
+    .in('lage', WEBB_RIKTIGA);
+  const webbAlla = (webbRaw || []) as any[];
+  function webbAr(u: any): number {
+    return parseInt(String(u.klar_datum || u.start_datum || u.created_at).slice(0, 4), 10);
+  }
+  const webbValtAr = webbAlla.filter(function(u) { return webbAr(u) === valtAr; });
+  const webbTotal = webbValtAr.reduce(function(s, u) { return s + (u.pris_kr || 0); }, 0);
+  const webbBetalt = webbValtAr.filter(function(u) { return u.lage === 'betald'; }).reduce(function(s, u) { return s + (u.pris_kr || 0); }, 0);
+  const webbUtanPris = webbValtAr.filter(function(u) { return !u.pris_kr; }).length;
 
   const bokningar: BokningRow[] = (bokningarRaw || []) as BokningRow[];
   const typer: TypRow[] = (typerRaw || []) as TypRow[];
@@ -212,6 +230,13 @@ export default async function EkonomiPage(props: { searchParams?: Promise<{ ar?:
         <Kpi label="Snittpris" value={`${snitt.toLocaleString('sv-SE')} kr`} sub="per bokning" />
       </div>
 
+      <div className="grid grid-cols-4 gap-6 mb-12">
+        <Kpi label="Webbuppdrag" value={`${webbTotal.toLocaleString('sv-SE')} kr`} sub={`${webbValtAr.length} uppdrag${webbUtanPris ? `, ${webbUtanPris} utan pris` : ''}`} />
+        <Kpi label="Betalt webb" value={`${webbBetalt.toLocaleString('sv-SE')} kr`} sub="uppdrag i läget betald" />
+        <Kpi label="Utestående webb" value={`${Math.max(0, webbTotal - webbBetalt).toLocaleString('sv-SE')} kr`} sub="klara, fakturerade eller pågår" />
+        <Kpi label="Totalt foto + webb" value={`${(valtStat.total + webbTotal).toLocaleString('sv-SE')} kr`} sub={`inkommit ${(valtStat.paid + webbBetalt).toLocaleString('sv-SE')} kr`} />
+      </div>
+
       {arLista.length > 1 && (
         <div className="mb-12">
           <div className="eyebrow mb-4">Årsjämförelse</div>
@@ -296,6 +321,46 @@ export default async function EkonomiPage(props: { searchParams?: Promise<{ ar?:
                   </tr>
                 );
               })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="mb-12">
+        <div className="flex justify-between items-end mb-4">
+          <div className="eyebrow">Webbuppdrag {valtAr}</div>
+          <Link href="/admin/webbuppdrag" className="text-[11px] text-ink-muted hover:text-ink">Alla webbuppdrag</Link>
+        </div>
+        <div className="bg-white border border-line-soft rounded-sm overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-bg-subtle">
+              <tr className="text-left text-[11px] uppercase tracking-wider text-ink-muted">
+                <th className="px-5 py-3 font-medium">Kund</th>
+                <th className="px-5 py-3 font-medium">Uppdrag</th>
+                <th className="px-5 py-3 font-medium">Läge</th>
+                <th className="px-5 py-3 font-medium text-right">Pris</th>
+              </tr>
+            </thead>
+            <tbody>
+              {webbValtAr.length === 0 ? (
+                <tr><td colSpan={4} className="px-5 py-8 text-center text-ink-muted">Inga webbuppdrag för {valtAr}</td></tr>
+              ) : webbValtAr
+                .slice()
+                .sort(function(a, b) { return String(b.klar_datum || b.start_datum || b.created_at).localeCompare(String(a.klar_datum || a.start_datum || a.created_at)); })
+                .map(function(u) {
+                  const namn = u.kund?.foretagsnamn || `${u.kund?.fornamn || ''} ${u.kund?.efternamn || ''}`.trim();
+                  return (
+                    <tr key={u.id} className="border-t border-line-soft">
+                      <td className="px-5 py-3.5 font-medium">{namn}</td>
+                      <td className="px-5 py-3.5">
+                        {u.titel}
+                        <span className="text-ink-muted ml-1.5 text-[12px]">{WEBB_TYP_LABELS[u.typ as WebbTyp] || ''}</span>
+                      </td>
+                      <td className="px-5 py-3.5 text-ink-muted">{WEBB_LABELS[u.lage as WebbLage] || u.lage}</td>
+                      <td className="px-5 py-3.5 text-right tabular-nums font-medium">{u.pris_kr ? `${Number(u.pris_kr).toLocaleString('sv-SE')} kr` : <span className="text-ink-faint">pris saknas</span>}</td>
+                    </tr>
+                  );
+                })}
             </tbody>
           </table>
         </div>
