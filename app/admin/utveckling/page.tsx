@@ -157,6 +157,28 @@ export default async function UtvecklingPage() {
       };
     });
 
+  /* Webbuppdrag manad for manad sedan matstart. Inkomna raknas pa created_at,
+     klara och omsattning pa klar_datum. Tabellen kommer med migration 0014,
+     saknas den blir listan tom. Tackade nej raknas som inkommen men inte klar. */
+  const { data: webbRaw } = await supabase
+    .from('webbuppdrag')
+    .select('id, created_at, klar_datum, lage, pris_kr')
+    .or(`created_at.gte.${MATSTART},klar_datum.gte.${MATSTART}`);
+  const webb = (webbRaw || []) as any[];
+  const webbRader = manader.map(function(m) {
+    const inkomna = webb.filter(function(u) { return manadsnyckel(u.created_at) === m.nyckel && u.created_at >= MATSTART; });
+    const klara = webb.filter(function(u) { return u.klar_datum && manadsnyckel(u.klar_datum) === m.nyckel && u.klar_datum >= MATSTART && u.lage !== 'tackade_nej'; });
+    return {
+      nyckel: m.nyckel,
+      label: m.label,
+      inkomna: inkomna.length,
+      klara: klara.length,
+      omsattning: klara.reduce(function(s, u) { return s + (Number(u.pris_kr) || 0); }, 0),
+      betalda: klara.filter(function(u) { return u.lage === 'betald'; }).length,
+    };
+  });
+  const webbSedanStart = webbRader.reduce(function(s, r) { return { inkomna: s.inkomna + r.inkomna, klara: s.klara + r.klara, omsattning: s.omsattning + r.omsattning }; }, { inkomna: 0, klara: 0, omsattning: 0 });
+
   return (
     <>
       <div className="flex justify-between items-end mb-6 pb-6 border-b border-line">
@@ -279,6 +301,34 @@ export default async function UtvecklingPage() {
           )}
         </section>
       </div>
+
+      <section className="mb-12">
+        <div className="flex items-end justify-between mb-1">
+          <h2 className="text-2xl font-serif">Webbuppdrag</h2>
+          <Link href="/admin/webbuppdrag" className="text-sm text-ink-muted hover:text-ink">Till webbuppdrag</Link>
+        </div>
+        <p className="text-ink-muted text-[13px] mb-5">Hemsidor och SEO åt andra företagare. Sedan mätstarten {webbSedanStart.inkomna} inkomna, {webbSedanStart.klara} klara, {kr(webbSedanStart.omsattning)}.</p>
+        <div className="bg-white border border-line-soft rounded-sm overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr><Th>Månad</Th><Th right>Inkomna</Th><Th right>Klara</Th><Th right>Betalda</Th><Th right>Omsättning</Th></tr>
+            </thead>
+            <tbody>
+              {webbRader.map(function(r) {
+                return (
+                  <tr key={r.nyckel} className="border-b border-line-soft last:border-0 hover:bg-bg">
+                    <Td className="font-serif text-[17px]">{r.label}</Td>
+                    <Td right className="font-mono text-[12.5px]">{r.inkomna}</Td>
+                    <Td right className="font-mono text-[12.5px]">{r.klara}</Td>
+                    <Td right className="font-mono text-[12.5px] text-ink-muted">{r.betalda}</Td>
+                    <Td right className="font-mono text-[12.5px]">{kr(r.omsattning)}</Td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
       <section className="mb-12">
         <div className="flex items-end justify-between mb-1">
