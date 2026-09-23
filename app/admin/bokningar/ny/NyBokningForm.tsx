@@ -18,8 +18,6 @@ const STATUS_LIST: { kod: string; label: string }[] = [
   { kod: 'klar', label: 'Klar' },
 ];
 
-const HUR_HITTADE_FORSLAG = ['Instagram', 'Google', 'Rekommendation', 'Återkommande kund', 'Annat'];
-
 type KundOption = { id: string; label: string; arForetagskund?: boolean; harEmail?: boolean; harTelefon?: boolean };
 
 /**
@@ -150,7 +148,6 @@ export function NyBokningForm(props: { kunder: KundOption[]; typer: { id: string
     if (satt('foretagsnamn', foretag)) gjorda.push('företagsnamn');
     if (satt('email', email)) gjorda.push('email');
     if (satt('telefon', telefon)) gjorda.push('telefon');
-    if (satt('hur_hittade', hurHittade)) gjorda.push('hur hittade');
 
     // Fotograferingstyp: matcha mot hennes egna typer, sa
     // Gravidfotografering hittar typen Gravid.
@@ -163,7 +160,9 @@ export function NyBokningForm(props: { kunder: KundOption[]; typer: { id: string
       if (traff && satt('fotograferingstyp_id', traff.id)) gjorda.push('fotograferingstyp');
     }
 
-    // Kalla: samma svar som hur hittade, men maste matcha ett av valen
+    // Kalla: svaret pa "vart hittade du mig" i mejlet, maste matcha ett av valen.
+    // Sedan 2026-09-23 ar detta det enda faltet for var kunden kom ifran,
+    // kundens hur_hittade fylls fran kallan pa servern.
     if (hurHittade) {
       const val = ['Instagram', 'Google', 'Rekommendation', 'Återkommande kund', 'Mässa', 'Hemsida'];
       const jamfor = hurHittade.toLowerCase();
@@ -309,14 +308,6 @@ export function NyBokningForm(props: { kunder: KundOption[]; typer: { id: string
                 <input type="tel" name="telefon" className={inputStyle} />
               </Field>
             </Row>
-            <Field label="Hur hittade kunden mig">
-              <input type="text" name="hur_hittade" className={inputStyle} list="hur-hittade-forslag" placeholder="t.ex. Instagram" />
-              <datalist id="hur-hittade-forslag">
-                {HUR_HITTADE_FORSLAG.map(function(f) {
-                  return <option key={f} value={f} />;
-                })}
-              </datalist>
-            </Field>
           </div>
         )}
       </Section>
