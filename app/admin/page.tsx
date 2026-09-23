@@ -16,6 +16,12 @@ function formatDate(dateStr: string | null): string {
   return `${d.getDate()} ${MONTH_NAMES[d.getMonth()].slice(0, 3)}`.toUpperCase();
 }
 
+/* Datum plus klockslag, t.ex. "8 OKT 16:00". Saknas tid visas bara datumet. */
+function formatDatumTid(dateStr: string | null, tid: string | null | undefined): string {
+  const datum = formatDate(dateStr);
+  return tid ? datum + ' ' + String(tid).slice(0, 5) : datum;
+}
+
 function greeting(): string {
   const h = new Date().getHours();
   if (h < 10) return 'God morgon, Anna.';
@@ -67,6 +73,7 @@ export default async function DashboardPage() {
     .gte('datum', now.toISOString().slice(0, 10))
     .lte('datum', weekFromNow.toISOString().slice(0, 10))
     .order('datum', { ascending: true })
+    .order('tid', { ascending: true })
     .limit(10);
 
   const upcoming = (upcomingRaw || []) as unknown as BokningExpanderad[];
@@ -104,9 +111,10 @@ export default async function DashboardPage() {
      ovan, annars syns paminnelsen bara veckan innan fotograferingen. */
   const { data: kommandeRaw } = await supabase
     .from('bokningar')
-    .select('id, datum, plats, kund_id, status, kund:kunder(fornamn, efternamn, foretagsnamn), fotograferingstyp:fotograferingstyper(namn), avtal(status)')
+    .select('id, datum, tid, plats, kund_id, status, kund:kunder(fornamn, efternamn, foretagsnamn), fotograferingstyp:fotograferingstyper(namn), avtal(status)')
     .gte('datum', idag)
     .order('datum', { ascending: true })
+    .order('tid', { ascending: true })
     .limit(50);
 
   const utanAvtal = ((kommandeRaw || []) as any[]).filter(function(b: any) {
@@ -195,7 +203,7 @@ export default async function DashboardPage() {
               <tbody>
                 {upcoming.map((b) => (
                   <tr key={b.id} className="border-b border-line-soft last:border-0 hover:bg-bg cursor-pointer">
-                    <Td className="font-mono text-[12px] text-ink-muted whitespace-nowrap">{formatDate(b.datum)}</Td>
+                    <Td className="font-mono text-[12px] text-ink-muted whitespace-nowrap">{formatDatumTid(b.datum, b.tid)}</Td>
                     <Td className="font-serif text-[17px]">
                       <Link href={`/admin/kunder/${b.kund_id}`}>{b.kund?.foretagsnamn || `${b.kund?.fornamn || ''} ${b.kund?.efternamn || ''}`.trim()}</Link>
                     </Td>
@@ -365,7 +373,7 @@ export default async function DashboardPage() {
                   const namn = b.kund?.foretagsnamn || `${b.kund?.fornamn || ''} ${b.kund?.efternamn || ''}`.trim();
                   return (
                     <tr key={b.id} className="border-b border-line-soft last:border-0 hover:bg-bg">
-                      <Td className="font-mono text-[12px] text-ink-muted whitespace-nowrap">{formatDate(b.datum)}</Td>
+                      <Td className="font-mono text-[12px] text-ink-muted whitespace-nowrap">{formatDatumTid(b.datum, b.tid)}</Td>
                       <Td className="font-serif text-[17px]">
                         <Link href={`/admin/kunder/${b.kund_id}`}>{namn}</Link>
                       </Td>
