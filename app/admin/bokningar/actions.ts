@@ -447,7 +447,9 @@ export async function skapaBokning(formData: FormData) {
     const efternamn = String(formData.get('efternamn') || '') || null;
     const foretagsnamn = String(formData.get('foretagsnamn') || '') || null;
     const ar_foretagskund = formData.get('ar_foretagskund') === 'on';
-    const hur_hittade = String(formData.get('hur_hittade') || '') || null;
+    // Faltet "Hur hittade kunden mig" ar borttaget ur Ny bokning 2026-09-23,
+    // det var en dubblett av kallan. Kundens hur_hittade satts fran kallan.
+    const hur_hittade = kalla;
 
     if (!fornamn) saknas.unshift('förnamn');
     if (!email) saknas.push('e-post');
