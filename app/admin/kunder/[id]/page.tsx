@@ -4,9 +4,10 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { togglePaid, setBildpaket } from '../actions';
 import { toggleKundgalleri, gaVidare, skickaRecensionsmail } from '../../bokningar/actions';
-import { harledBokningStatus, harledAvtalStatus, PROSPEKT_LAGEN } from '@/lib/types';
+import { harledBokningStatus, harledAvtalStatus, PROSPEKT_LAGEN, WEBB_LAGEN, WEBB_TYP_LABELS, type WebbTyp } from '@/lib/types';
 import { AvtalPill } from '@/components/AvtalPill';
 import { uppdateraProspekt } from '../../foretag/actions';
+import { uppdateraWebbuppdrag } from '../../webbuppdrag/actions';
 
 const prospektInput = 'w-full px-3 py-2.5 bg-white border border-line-soft rounded-sm text-sm focus:outline-none focus:border-ink';
 
@@ -36,6 +37,14 @@ export default async function KundDetaljPage(props: { params: Promise<{ id: stri
 
   const bokningar = bokningarRaw || [];
   const paket = paketRaw || [];
+
+  /* Webbuppdrag pa kunden, tabellen kommer med migration 0014. Fel betyder tom lista. */
+  const { data: webbRaw } = await supabase
+    .from('webbuppdrag')
+    .select('id, titel, typ, lage, hemsida, pris_kr, start_datum, klar_datum, fakturerad_datum, betald_datum, nasta_steg, uppfoljning_datum, anteckning')
+    .eq('kund_id', id)
+    .order('created_at', { ascending: false });
+  const webbuppdrag = (webbRaw || []) as any[];
 
   let sumAvgift = 0;
   let sumAvgiftPaid = 0;
@@ -120,6 +129,75 @@ export default async function KundDetaljPage(props: { params: Promise<{ id: stri
             </div>
           </div>
         </form>
+      )}
+
+      {(webbuppdrag.length > 0 || kund.ar_webbkund) && (
+        <div className="mb-12">
+          <div className="flex justify-between items-end mb-4">
+            <h2 className="font-serif text-2xl">Webbuppdrag</h2>
+            <Link href="/admin/webbuppdrag" className="text-xs text-ink-muted hover:text-ink">Alla webbuppdrag</Link>
+          </div>
+          <div className="bg-white border border-line-soft rounded-sm overflow-hidden">
+            {webbuppdrag.length === 0 ? (
+              <div className="p-8 text-center text-ink-faint text-sm">Webbkund utan uppdrag än. Lägg till under Webbuppdrag.</div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="bg-bg-subtle">
+                  <tr className="text-left text-[11px] uppercase tracking-wider text-ink-muted">
+                    <th className="px-4 py-3 font-medium">Uppdrag</th>
+                    <th className="px-4 py-3 font-medium">Läge</th>
+                    <th className="px-4 py-3 font-medium text-right">Pris</th>
+                    <th className="px-4 py-3 font-medium">Nästa steg</th>
+                    <th className="px-4 py-3 font-medium">Följ upp</th>
+                    <th className="px-4 py-3 font-medium">Datum</th>
+                    <th className="px-4 py-3" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {webbuppdrag.map(function(u: any) {
+                    const formId = `webb-${u.id}`;
+                    return (
+                      <tr key={u.id} className="border-t border-line-soft align-top">
+                        <td className="px-4 py-3.5">
+                          <div className="font-medium">{u.titel}</div>
+                          <div className="text-[11px] text-ink-faint mt-0.5">{WEBB_TYP_LABELS[u.typ as WebbTyp] || u.typ}{u.hemsida ? ` · ${u.hemsida}` : ''}</div>
+                          {u.anteckning && <div className="text-[12px] text-ink-muted mt-2 whitespace-pre-line max-w-[420px]">{u.anteckning}</div>}
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <select name="lage" form={formId} defaultValue={u.lage} className={prospektInput}>
+                            {WEBB_LAGEN.map(function(l) { return <option key={l.kod} value={l.kod}>{l.label}</option>; })}
+                          </select>
+                        </td>
+                        <td className="px-4 py-3.5 text-right">
+                          <input type="text" inputMode="numeric" name="pris_kr" form={formId} defaultValue={u.pris_kr ?? ''} placeholder="kr" className={`${prospektInput} w-[100px] text-right font-mono`} />
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <input type="text" name="nasta_steg" form={formId} defaultValue={u.nasta_steg || ''} className={`${prospektInput} min-w-[160px]`} />
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <input type="date" name="uppfoljning_datum" form={formId} defaultValue={u.uppfoljning_datum || ''} className={prospektInput} />
+                        </td>
+                        <td className="px-4 py-3.5 font-mono text-[11px] text-ink-muted whitespace-nowrap leading-relaxed">
+                          {u.start_datum && <div>start {u.start_datum}</div>}
+                          {u.klar_datum && <div>klar {u.klar_datum}</div>}
+                          {u.fakturerad_datum && <div>fakt. {u.fakturerad_datum}</div>}
+                          {u.betald_datum && <div>betald {u.betald_datum}</div>}
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <form id={formId} action={uppdateraWebbuppdrag} className="flex justify-end">
+                            <input type="hidden" name="id" value={u.id} />
+                            <input type="hidden" name="tillbaka" value="kund" />
+                            <button type="submit" className="px-3 py-2 text-xs border border-line-soft rounded-sm hover:border-ink transition-colors">Spara</button>
+                          </form>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
       )}
 
       <div className="flex justify-between items-end mb-4">
