@@ -10,6 +10,11 @@ import Link from 'next/link';
 
 const MONTH_NAMES = ['januari', 'februari', 'mars', 'april', 'maj', 'juni', 'juli', 'augusti', 'september', 'oktober', 'november', 'december'];
 
+/* Bokningsavgiftens lage valjs pa bokningen sedan detta datum. Aldre bokningar
+   har ingen fakturerad-flagga aven om fakturan ar skickad, sa de raknas inte
+   som ofakturerade. CRM:et byggs framat. */
+const FAKTURALAGE_FRAN = '2026-09-28';
+
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return '–';
   const d = new Date(dateStr);
@@ -111,7 +116,7 @@ export default async function DashboardPage() {
      ovan, annars syns paminnelsen bara veckan innan fotograferingen. */
   const { data: kommandeRaw } = await supabase
     .from('bokningar')
-    .select('id, datum, tid, plats, kund_id, status, bokningsavgift_kr, bokningsavgift_fakturerad, bokningsavgift_betald, kund:kunder(fornamn, efternamn, foretagsnamn), fotograferingstyp:fotograferingstyper(namn), avtal(status)')
+    .select('id, datum, tid, plats, kund_id, status, created_at, bokningsavgift_kr, bokningsavgift_fakturerad, bokningsavgift_betald, kund:kunder(fornamn, efternamn, foretagsnamn), fotograferingstyp:fotograferingstyper(namn), avtal(status)')
     .gte('datum', idag)
     .order('datum', { ascending: true })
     .order('tid', { ascending: true })
@@ -123,9 +128,12 @@ export default async function DashboardPage() {
 
   /* Kommande bokningar dar bokningsavgiften varken ar fakturerad eller betald.
      Sedan 2026-09-28 kan Anna boka in en kund utan faktureringsuppgifter, och
-     da ska fakturan inte glommas. Bokningar utan avgift raknas inte. */
+     da ska fakturan inte glommas. Bokningar utan avgift raknas inte, och inte
+     heller bokningar som lades in innan laget fanns, de saknar bara flaggan. */
   const avgiftAttFakturera = ((kommandeRaw || []) as any[]).filter(function(b: any) {
-    return b.status !== 'avbokad' && b.status !== 'forfragan' && Number(b.bokningsavgift_kr) > 0 && !b.bokningsavgift_fakturerad && !b.bokningsavgift_betald;
+    return b.status !== 'avbokad' && b.status !== 'forfragan' && Number(b.bokningsavgift_kr) > 0
+      && !b.bokningsavgift_fakturerad && !b.bokningsavgift_betald
+      && String(b.created_at || '') >= FAKTURALAGE_FRAN;
   });
 
   /* Oppna forfragningar: bokningar med status forfragan, oftast utan datum.
@@ -452,7 +460,7 @@ export default async function DashboardPage() {
         <section className="mb-12">
           <h2 className="text-2xl font-serif mb-1">Bokningsavgift att fakturera</h2>
           <p className="text-ink-muted text-[13px] mb-5">
-            Kommande bokningar där fakturan på bokningsavgiften inte är skickad än, ofta för att faktureringsuppgifterna saknas. Byt läge under Redigera på bokningen eller med prickarna på kundsidan.
+            Bokningar inlagda från och med 28 september där fakturan på bokningsavgiften inte är skickad än, ofta för att faktureringsuppgifterna saknas. Byt läge under Redigera på bokningen eller med prickarna på kundsidan.
           </p>
           <div className="bg-white border border-line-soft rounded-sm overflow-hidden">
             <table className="w-full">
