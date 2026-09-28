@@ -60,8 +60,8 @@ export async function skapaWebbuppdrag(formData: FormData) {
   const titel = String(formData.get('titel') || '').trim();
   if (!titel) avbryt('fyll i vad uppdraget gäller.');
 
-  const typRaw = String(formData.get('typ') || 'seo_analys');
-  const typ: WebbTyp = (TYPER.indexOf(typRaw as WebbTyp) !== -1 ? typRaw : 'seo_analys') as WebbTyp;
+  const typRaw = String(formData.get('typ') || 'hemside_seo_analys');
+  const typ: WebbTyp = (TYPER.indexOf(typRaw as WebbTyp) !== -1 ? typRaw : 'hemside_seo_analys') as WebbTyp;
   const lageRaw = String(formData.get('lage') || 'forfragan');
   const lage: WebbLage = (LAGEN.indexOf(lageRaw as WebbLage) !== -1 ? lageRaw : 'forfragan') as WebbLage;
 
