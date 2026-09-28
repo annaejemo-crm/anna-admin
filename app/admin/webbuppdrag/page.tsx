@@ -248,7 +248,7 @@ export default async function WebbuppdragPage(props: { searchParams?: Promise<{ 
               <input type="text" name="titel" className={inputStyle} required placeholder="t.ex. Ny sajt i WordPress, SEO-genomgång" />
             </Field>
             <Field label="Typ">
-              <select name="typ" defaultValue="seo_analys" className={inputStyle}>
+              <select name="typ" defaultValue="hemside_seo_analys" className={inputStyle}>
                 {WEBB_TYPER.map(function(t) { return <option key={t.kod} value={t.kod}>{t.label}</option>; })}
               </select>
             </Field>
