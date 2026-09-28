@@ -21,8 +21,9 @@ const STATUS_LIST: { kod: string; label: string }[] = [
 type KundOption = { id: string; label: string; arForetagskund?: boolean; harEmail?: boolean; harTelefon?: boolean };
 
 /**
- * Obligatoriska falt sedan 2026-09-10: kalla, e-post, datum och klockslag.
- * Telefon ar valfritt sedan 2026-09-16 (Annas beslut), faltet finns kvar men kravs inte.
+ * Obligatoriska falt sedan 2026-09-10: kalla, e-post och datum.
+ * Telefon ar valfritt sedan 2026-09-16 och klockslag sedan 2026-09-28 (Annas beslut),
+ * falten finns kvar men kravs inte, tiden fylls ofta i senare.
  * Webblasaren stoppar formularet via required, och skapaBokning kontrollerar
  * samma sak pa servern och skickar tillbaka hit med ?fel= om nagot saknas.
  * Undantag: ar status Forfragan ar datum och tid valfria, en forfragan har
@@ -359,8 +360,8 @@ export function NyBokningForm(props: { kunder: KundOption[]; typer: { id: string
           <Field label="Datum" kravs={!arForfragan}>
             <input type="date" name="datum" className={inputStyle} required={!arForfragan} />
           </Field>
-          <Field label="Tid" kravs={!arForfragan}>
-            <input type="time" name="tid" className={inputStyle} required={!arForfragan} />
+          <Field label="Tid">
+            <input type="time" name="tid" className={inputStyle} />
           </Field>
         </Row>
         <PlatsValjare platser={props.platser} />
@@ -371,13 +372,15 @@ export function NyBokningForm(props: { kunder: KundOption[]; typer: { id: string
           <Field label={arForetagskund ? 'Bokningsavgift (kr ex moms)' : 'Bokningsavgift (kr)'}>
             <PrisFalt name="bokningsavgift_kr" defaultValue={2000} arForetagskund={arForetagskund} placeholder="2000" />
           </Field>
-          <Field label="Betald">
-            <label className="flex items-center gap-2 h-[42px]">
-              <input type="checkbox" name="bokningsavgift_betald" className="w-4 h-4" />
-              <span className="text-sm text-ink-muted">Markera som betald</span>
-            </label>
+          <Field label="Läge">
+            <select name="bokningsavgift_lage" defaultValue="ej_fakturerad" className={inputStyle}>
+              <option value="ej_fakturerad">Inte fakturerad än, saknar faktureringsuppgifter</option>
+              <option value="fakturerad">Faktura skickad</option>
+              <option value="betald">Betald</option>
+            </select>
           </Field>
         </Row>
+        <p className="text-[12px] text-ink-muted">Kunden är bokad oavsett läge. Bokningar som inte fakturerats syns på dashboarden under Bokningsavgift att fakturera tills du byter läge, här eller med prickarna på kundsidan.</p>
       </Section>
 
       <Section title="Traktamente">
