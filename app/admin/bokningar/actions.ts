@@ -19,6 +19,27 @@ Tack på förhand.
 Varma hälsningar
 Anna`;
 
+/**
+ * Bokningsavgiftens lage fran formularet, sedan 2026-09-28 ett val i stallet
+ * for en betald-ruta: ej_fakturerad (kunden ar bokad men fakturan ar inte
+ * skickad, ofta for att faktureringsuppgifterna saknas), fakturerad, betald.
+ * Den gamla rutan bokningsavgift_betald fungerar fortfarande for formular
+ * som inte bytt an. Returnerar de kolumner som ska skrivas.
+ */
+function bokningsavgiftLage(formData: FormData, nuvarandeFaktureradAt?: string | null) {
+  const lage = String(formData.get('bokningsavgift_lage') || '');
+  if (!lage) {
+    const betald = formData.get('bokningsavgift_betald') === 'on';
+    return { bokningsavgift_betald: betald } as Record<string, unknown>;
+  }
+  const fakturerad = lage === 'fakturerad' || lage === 'betald';
+  return {
+    bokningsavgift_fakturerad: fakturerad,
+    bokningsavgift_fakturerad_at: fakturerad ? (nuvarandeFaktureradAt || new Date().toISOString()) : null,
+    bokningsavgift_betald: lage === 'betald',
+  } as Record<string, unknown>;
+}
+
 export async function updateBokning(formData: FormData) {
   const supabase = await createClient();
 
@@ -38,8 +59,11 @@ export async function updateBokning(formData: FormData) {
   const bokningsavgift_kr = bokningsavgiftRaw ? Math.round(parseFloat(bokningsavgiftRaw)) : null;
   const bildpaket_kr = bildpaketKrRaw ? Math.round(parseFloat(bildpaketKrRaw)) : null;
 
-  const bokningsavgift_betald = formData.get('bokningsavgift_betald') === 'on';
   const bildpaket_betald = formData.get('bildpaket_betald') === 'on';
+
+  // Behall befintligt fakturadatum om avgiften redan var fakturerad
+  const { data: forr } = await supabase.from('bokningar').select('bokningsavgift_fakturerad_at').eq('id', id).maybeSingle();
+  const avgiftLage = bokningsavgiftLage(formData, forr?.bokningsavgift_fakturerad_at || null);
 
   const intern_anteckning = String(formData.get('intern_anteckning') || '') || null;
   const visma_fakturanr = String(formData.get('visma_fakturanr') || '') || null;
@@ -86,7 +110,7 @@ export async function updateBokning(formData: FormData) {
     bokningsavgift_kr: bokningsavgift_kr,
     bildpaket_namn: bildpaketNamn,
     bildpaket_kr: bildpaket_kr,
-    bokningsavgift_betald: bokningsavgift_betald,
+    ...avgiftLage,
     bildpaket_betald: bildpaket_betald,
     intern_anteckning: intern_anteckning,
     visma_fakturanr: visma_fakturanr,
@@ -393,8 +417,8 @@ export async function skapaBokning(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
 
-  // Obligatoriskt sedan 2026-09-10: kalla, e-post, datum och klockslag.
-  // Telefon ar valfritt sedan 2026-09-16, sparas om det fylls i.
+  // Obligatoriskt sedan 2026-09-10: kalla, e-post och datum.
+  // Telefon ar valfritt sedan 2026-09-16 och klockslag sedan 2026-09-28, sparas om de fylls i.
   // Saknas nagot skickas Anna tillbaka till formularet med ett meddelande,
   // inget sparas. Gamla bokningar rors inte, kravet galler bara nya.
   // En forfragan (status forfragan) far sakna datum och tid.
@@ -416,7 +440,6 @@ export async function skapaBokning(formData: FormData) {
 
   const saknas: string[] = [];
   if (!datum && !arForfragan) saknas.push('datum');
-  if (!tid && !arForfragan) saknas.push('klockslag');
   if (!kalla) saknas.push('källa');
 
   if (kund_lage === 'existerande') {
@@ -477,7 +500,7 @@ export async function skapaBokning(formData: FormData) {
 
   const bokningsavgiftRaw = String(formData.get('bokningsavgift_kr') || '').replace(/\s/g, '').replace(',', '.');
   const bokningsavgift_kr = bokningsavgiftRaw ? Math.round(parseFloat(bokningsavgiftRaw)) : null;
-  const bokningsavgift_betald = formData.get('bokningsavgift_betald') === 'on';
+  const avgiftLage = bokningsavgiftLage(formData);
   const innefattar_traktamente = formData.get('innefattar_traktamente') === 'on';
   const intern_anteckning = String(formData.get('intern_anteckning') || '') || null;
 
@@ -522,7 +545,7 @@ export async function skapaBokning(formData: FormData) {
     fotograferingstyp_id: fotograferingstyp_id,
     status: status,
     bokningsavgift_kr: bokningsavgift_kr,
-    bokningsavgift_betald: bokningsavgift_betald,
+    ...avgiftLage,
     bildpaket_betald: false,
     innefattar_traktamente: innefattar_traktamente,
     intern_anteckning: intern_anteckning,
