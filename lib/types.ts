@@ -88,21 +88,22 @@ export const WEBB_LABELS: Record<WebbLage, string> = {
 /* Lagen som raknas som ett riktigt uppdrag i ekonomi och statistik */
 export const WEBB_RIKTIGA: WebbLage[] = ['pagar', 'klar', 'fakturerad', 'betald'];
 
-export type WebbTyp = 'omdesign' | 'uppbyggnad' | 'seo_analys' | 'seo_lista' | 'annat';
+/* Annas paket, hennes egna namn sedan 2026-09-28. Migration 0015. */
+export type WebbTyp = 'hemside_seo_analys' | 'seo_5_sidor' | 'seo_hela_sidan' | 'omdesign_seo' | 'annat';
 
 export const WEBB_TYPER: { kod: WebbTyp; label: string }[] = [
-  { kod: 'uppbyggnad', label: 'Ny sajt' },
-  { kod: 'omdesign', label: 'Omdesign' },
-  { kod: 'seo_analys', label: 'SEO-analys' },
-  { kod: 'seo_lista', label: 'SEO-lista' },
+  { kod: 'hemside_seo_analys', label: 'Hemside/SEO-analys' },
+  { kod: 'seo_5_sidor', label: 'SEO-optimering 5 sidor' },
+  { kod: 'seo_hela_sidan', label: 'SEO-optimering hela sidan' },
+  { kod: 'omdesign_seo', label: 'Omdesign + SEO' },
   { kod: 'annat', label: 'Annat' },
 ];
 
 export const WEBB_TYP_LABELS: Record<WebbTyp, string> = {
-  uppbyggnad: 'Ny sajt',
-  omdesign: 'Omdesign',
-  seo_analys: 'SEO-analys',
-  seo_lista: 'SEO-lista',
+  hemside_seo_analys: 'Hemside/SEO-analys',
+  seo_5_sidor: 'SEO-optimering 5 sidor',
+  seo_hela_sidan: 'SEO-optimering hela sidan',
+  omdesign_seo: 'Omdesign + SEO',
   annat: 'Annat',
 };
 
