@@ -1,0 +1,20 @@
+-- 0015: Webbuppdragens typer byts till Annas egna paket (2026-09-28)
+-- Körs i Supabase SQL Editor. Går att köra flera gånger utan skada.
+--
+-- Nya typer: hemside_seo_analys, seo_5_sidor, seo_hela_sidan, omdesign_seo, annat.
+-- Gamla typer mappas om: ombyggnaderna (uppbyggnad, omdesign) blir Omdesign + SEO,
+-- genomgångar och listor (seo_analys, seo_lista) blir Hemside/SEO-analys.
+-- Linn Valentinsens SEO-optimering av hela sajten sätts uttryckligen.
+
+alter table public.webbuppdrag drop constraint if exists webbuppdrag_typ_check;
+
+update public.webbuppdrag set typ = 'omdesign_seo' where typ in ('uppbyggnad', 'omdesign');
+update public.webbuppdrag set typ = 'hemside_seo_analys' where typ in ('seo_analys', 'seo_lista');
+
+update public.webbuppdrag w set typ = 'seo_hela_sidan'
+from public.kunder k
+where k.id = w.kund_id and k.efternamn = 'Valentinsen' and w.titel like 'SEO-optimering%';
+
+alter table public.webbuppdrag alter column typ set default 'hemside_seo_analys';
+alter table public.webbuppdrag add constraint webbuppdrag_typ_check
+  check (typ in ('hemside_seo_analys', 'seo_5_sidor', 'seo_hela_sidan', 'omdesign_seo', 'annat'));
