@@ -111,7 +111,7 @@ export default async function DashboardPage() {
      ovan, annars syns paminnelsen bara veckan innan fotograferingen. */
   const { data: kommandeRaw } = await supabase
     .from('bokningar')
-    .select('id, datum, tid, plats, kund_id, status, kund:kunder(fornamn, efternamn, foretagsnamn), fotograferingstyp:fotograferingstyper(namn), avtal(status)')
+    .select('id, datum, tid, plats, kund_id, status, bokningsavgift_kr, bokningsavgift_fakturerad, bokningsavgift_betald, kund:kunder(fornamn, efternamn, foretagsnamn), fotograferingstyp:fotograferingstyper(namn), avtal(status)')
     .gte('datum', idag)
     .order('datum', { ascending: true })
     .order('tid', { ascending: true })
@@ -119,6 +119,13 @@ export default async function DashboardPage() {
 
   const utanAvtal = ((kommandeRaw || []) as any[]).filter(function(b: any) {
     return b.status !== 'avbokad' && harledAvtalStatus(b) === 'inget';
+  });
+
+  /* Kommande bokningar dar bokningsavgiften varken ar fakturerad eller betald.
+     Sedan 2026-09-28 kan Anna boka in en kund utan faktureringsuppgifter, och
+     da ska fakturan inte glommas. Bokningar utan avgift raknas inte. */
+  const avgiftAttFakturera = ((kommandeRaw || []) as any[]).filter(function(b: any) {
+    return b.status !== 'avbokad' && b.status !== 'forfragan' && Number(b.bokningsavgift_kr) > 0 && !b.bokningsavgift_fakturerad && !b.bokningsavgift_betald;
   });
 
   /* Oppna forfragningar: bokningar med status forfragan, oftast utan datum.
@@ -430,6 +437,40 @@ export default async function DashboardPage() {
                           >
                             Skapa avtal
                           </Link>
+                        </div>
+                      </Td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {avgiftAttFakturera.length > 0 && (
+        <section className="mb-12">
+          <h2 className="text-2xl font-serif mb-1">Bokningsavgift att fakturera</h2>
+          <p className="text-ink-muted text-[13px] mb-5">
+            Kommande bokningar där fakturan på bokningsavgiften inte är skickad än, ofta för att faktureringsuppgifterna saknas. Byt läge under Redigera på bokningen eller med prickarna på kundsidan.
+          </p>
+          <div className="bg-white border border-line-soft rounded-sm overflow-hidden">
+            <table className="w-full">
+              <thead>
+                <tr><Th>Datum</Th><Th>Kund</Th><Th>Typ</Th><Th right>Avgift</Th><Th /></tr>
+              </thead>
+              <tbody>
+                {avgiftAttFakturera.map(function(b: any) {
+                  const namn = b.kund?.foretagsnamn || `${b.kund?.fornamn || ''} ${b.kund?.efternamn || ''}`.trim();
+                  return (
+                    <tr key={b.id} className="border-b border-line-soft last:border-0 hover:bg-bg">
+                      <Td className="font-mono text-[12px] text-ink-muted whitespace-nowrap">{formatDatumTid(b.datum, b.tid)}</Td>
+                      <Td className="font-serif text-[17px]"><Link href={`/admin/kunder/${b.kund_id}`}>{namn}</Link></Td>
+                      <Td>{b.fotograferingstyp?.namn || '–'}</Td>
+                      <Td right className="font-mono text-[12.5px]">{Number(b.bokningsavgift_kr).toLocaleString('sv-SE')} kr</Td>
+                      <Td>
+                        <div className="flex justify-end">
+                          <Link href={`/admin/bokningar/${b.id}/redigera`} className="text-[11px] px-2.5 py-1 border border-line-soft rounded-sm hover:border-ink hover:bg-bg whitespace-nowrap">Redigera</Link>
                         </div>
                       </Td>
                     </tr>
