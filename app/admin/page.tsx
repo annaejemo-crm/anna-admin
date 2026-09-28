@@ -12,7 +12,8 @@ const MONTH_NAMES = ['januari', 'februari', 'mars', 'april', 'maj', 'juni', 'jul
 
 /* Bokningsavgiftens lage valjs pa bokningen sedan detta datum. Aldre bokningar
    har ingen fakturerad-flagga aven om fakturan ar skickad, sa de raknas inte
-   som ofakturerade. CRM:et byggs framat. */
+   som ofakturerade. CRM:et byggs framat. Andra bokningar fran fore detta
+   datum markerar Anna sjalv med prickarna pa kundsidan om hon vill. */
 const FAKTURALAGE_FRAN = '2026-09-28';
 
 function formatDate(dateStr: string | null): string {
