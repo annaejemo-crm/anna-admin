@@ -115,11 +115,12 @@ export default async function RedigeraBokningPage(props: { params: Promise<{ id:
             <Field label={kund.ar_foretagskund ? 'Bokningsavgift (kr ex moms)' : 'Bokningsavgift (kr)'}>
               <PrisFalt name="bokningsavgift_kr" defaultValue={bokning.bokningsavgift_kr} arForetagskund={!!kund.ar_foretagskund} placeholder="2000" />
             </Field>
-            <Field label="Betald">
-              <label className="flex items-center gap-2 h-[42px]">
-                <input type="checkbox" name="bokningsavgift_betald" defaultChecked={!!bokning.bokningsavgift_betald} className="w-4 h-4" />
-                <span className="text-sm text-ink-muted">Markera som betald</span>
-              </label>
+            <Field label="Läge">
+              <select name="bokningsavgift_lage" defaultValue={bokning.bokningsavgift_betald ? 'betald' : bokning.bokningsavgift_fakturerad ? 'fakturerad' : 'ej_fakturerad'} className={inputStyle}>
+                <option value="ej_fakturerad">Inte fakturerad än, saknar faktureringsuppgifter</option>
+                <option value="fakturerad">Faktura skickad</option>
+                <option value="betald">Betald</option>
+              </select>
             </Field>
           </Row>
         </Section>
