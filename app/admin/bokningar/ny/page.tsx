@@ -27,6 +27,8 @@ export default async function NyBokningPage(props: { searchParams?: Promise<{ ku
       arForetagskund: !!k.ar_foretagskund,
       harEmail: !!(k.email && String(k.email).trim()),
       harTelefon: !!(k.telefon && String(k.telefon).trim()),
+      email: k.email || '',
+      telefon: k.telefon || '',
     };
   });
   const typer = (typerRaw || []) as { id: string; namn: string }[];
