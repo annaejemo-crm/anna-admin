@@ -453,16 +453,19 @@ export async function skapaBokning(formData: FormData) {
       .maybeSingle();
     if (!kund) avbryt('kunden hittades inte.');
 
-    // Kompletterar kunden med det som saknas, utan att skriva over det som finns
-    const nyEmail = (kund.email && String(kund.email).trim()) ? null : email;
-    const nyTelefon = (kund.telefon && String(kund.telefon).trim()) ? null : telefon;
-    if (!(kund.email && String(kund.email).trim()) && !nyEmail) saknas.push('e-post');
+    // Sedan 2026-09-29 visas e-post och telefon ifyllda i formularet aven for
+    // en kund som redan har dem, sa Anna ser adressen. Skiljer sig det som
+    // skickas in fran det sparade uppdateras kundkortet. Tomt falt skriver
+    // aldrig over ett befintligt varde.
+    const befintligEmail = String(kund.email || '').trim();
+    const befintligTelefon = String(kund.telefon || '').trim();
+    if (!email && !befintligEmail) saknas.push('e-post');
     if (saknas.length > 0) avbryt('fyll i ' + saknas.join(', ') + '.');
 
-    if (nyEmail || nyTelefon) {
-      const komplettering: { email?: string; telefon?: string } = {};
-      if (nyEmail) komplettering.email = nyEmail;
-      if (nyTelefon) komplettering.telefon = nyTelefon;
+    const komplettering: { email?: string; telefon?: string } = {};
+    if (email && email !== befintligEmail) komplettering.email = email;
+    if (telefon && telefon !== befintligTelefon) komplettering.telefon = telefon;
+    if (Object.keys(komplettering).length > 0) {
       await supabase.from('kunder').update(komplettering).eq('id', kund_id);
     }
   } else {
