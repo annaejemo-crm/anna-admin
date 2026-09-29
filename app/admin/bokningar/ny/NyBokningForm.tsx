@@ -18,10 +18,12 @@ const STATUS_LIST: { kod: string; label: string }[] = [
   { kod: 'klar', label: 'Klar' },
 ];
 
-type KundOption = { id: string; label: string; arForetagskund?: boolean; harEmail?: boolean; harTelefon?: boolean };
+type KundOption = { id: string; label: string; arForetagskund?: boolean; harEmail?: boolean; harTelefon?: boolean; email?: string; telefon?: string };
 
 /**
- * Obligatoriska falt sedan 2026-09-10: kalla, e-post och datum.
+ * Obligatoriska falt sedan 2026-09-10: kalla, e-post och datum. E-posten visas
+ * alltid sedan 2026-09-29, aven for en kund som redan har en, sa Anna ser
+ * adressen och kan ratta den. Andrad adress sparas pa kunden.
  * Telefon ar valfritt sedan 2026-09-16 och klockslag sedan 2026-09-28 (Annas beslut),
  * falten finns kvar men kravs inte, tiden fylls ofta i senare.
  * Webblasaren stoppar formularet via required, och skapaBokning kontrollerar
@@ -245,39 +247,39 @@ export function NyBokningForm(props: { kunder: KundOption[]; typer: { id: string
         <input type="hidden" name="kund_lage" value={kundLage} />
 
         {kundLage === 'existerande' ? (
-          <Field label="Välj kund">
-            <select
-              name="kund_id"
-              value={valdKund}
-              onChange={function(e) { setValdKund(e.target.value); }}
-              className={inputStyle}
-              required
-            >
-              <option value="">Välj en kund…</option>
-              {props.kunder.map(function(k) {
-                return <option key={k.id} value={k.id}>{k.label}</option>;
-              })}
-            </select>
-            {(saknarEmail || saknarTelefon) && (
-              <div className="mt-5 space-y-3">
-                <p className="text-sm text-ink-muted">
-                  Kunden saknar {saknarEmail && saknarTelefon ? 'e-post och telefon' : saknarEmail ? 'e-post' : 'telefon'}. Fyll i så sparas det på kunden{saknarTelefon ? ', telefon är frivilligt' : ''}.
-                </p>
+          <div className="space-y-5">
+            <Field label="Välj kund">
+              <select
+                name="kund_id"
+                value={valdKund}
+                onChange={function(e) { setValdKund(e.target.value); }}
+                className={inputStyle}
+                required
+              >
+                <option value="">Välj en kund…</option>
+                {props.kunder.map(function(k) {
+                  return <option key={k.id} value={k.id}>{k.label}</option>;
+                })}
+              </select>
+            </Field>
+            {valdKundObj && (
+              <>
                 <Row>
-                  {saknarEmail && (
-                    <Field label="Email" kravs>
-                      <input type="email" name="email" className={inputStyle} required />
-                    </Field>
-                  )}
-                  {saknarTelefon && (
-                    <Field label="Telefon">
-                      <input type="tel" name="telefon" className={inputStyle} />
-                    </Field>
-                  )}
+                  <Field label="Email" kravs>
+                    <input type="email" name="email" key={`email-${valdKund}`} defaultValue={valdKundObj.email || ''} className={inputStyle} required />
+                  </Field>
+                  <Field label="Telefon">
+                    <input type="tel" name="telefon" key={`tel-${valdKund}`} defaultValue={valdKundObj.telefon || ''} className={inputStyle} />
+                  </Field>
                 </Row>
-              </div>
+                <p className="text-[12px] text-ink-muted">
+                  {saknarEmail
+                    ? 'Kunden saknar e-post i registret. Fyll i så sparas den på kunden.'
+                    : 'Hämtad från kundkortet. Ändrar du adressen här uppdateras kunden.'}
+                </p>
+              </>
             )}
-          </Field>
+          </div>
         ) : (
           <div className="space-y-5">
             <Row>
