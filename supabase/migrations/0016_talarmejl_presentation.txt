@@ -1,0 +1,22 @@
+-- 0016: Mejl till talare om presentationen (2026-10-04)
+-- Körs i Supabase SQL Editor. Går att köra flera gånger utan skada.
+--
+-- Anna ville kunna mejla talarna och be om den färdiga presentationen med
+-- deadline, i stället för att bara bocka av i listan. Kryssrutorna är kvar
+-- som markering för henne, mejlet skickas med en egen knapp per talare.
+
+alter table public.fam_talare add column if not exists presentation_begard_at timestamptz;
+
+-- Mallen går att redigera under Mailmallar. Läggs in en gång per användare.
+-- Variabler: {{fornamn}}, {{namn}}, {{deadline}}, {{konferensdatum}}, {{plats}}
+insert into public.mail_mallar (user_id, namn, kategori, amne, brodtext, ordning)
+select t.user_id,
+  'Be talare om presentationen',
+  'talare',
+  'Din presentation till Family and Meetings, senast {{deadline}}',
+  E'Hej {{fornamn}},\n\nVad roligt att du är med på Family and Meetings {{konferensdatum}}.\n\nNu börjar det närma sig, och för att dagen ska flyta på behöver jag ha hela din presentation, helt färdig, absolut senast {{deadline}}. Skicka den till mig på kontakt@annaejemo.se.\n\nHör av dig om du undrar över något, eller om du vill bolla upplägget innan.\n\nKram\nAnna',
+  10
+from (select distinct user_id from public.fam_talare) t
+where not exists (
+  select 1 from public.mail_mallar m where m.user_id = t.user_id and m.kategori = 'talare'
+);
