@@ -4,6 +4,7 @@ import { StatusPill } from '@/components/StatusPill';
 import { AvtalPill } from '@/components/AvtalPill';
 import { harledBokningStatus, harledAvtalStatus, RECENSION_FRAN } from '@/lib/types';
 import { gaVidare, skickaRecensionsmail } from '../bokningar/actions';
+import { sparaKundKontakt } from './actions';
 
 const MONTH_NAMES = ['januari', 'februari', 'mars', 'april', 'maj', 'juni', 'juli', 'augusti', 'september', 'oktober', 'november', 'december'];
 
@@ -39,6 +40,16 @@ export default async function KunderPage(props: { searchParams?: Promise<{ ar?: 
     .order('datum', { ascending: true });
 
   const bokningar = (data || []) as any[];
+
+  /* Kunder utan mejladress. Listas i en egen utfallbar lista hogst upp sa
+     Anna kan fylla i dem direkt, utan att ga in pa varje kundkort. */
+  const { data: allaKunderRaw } = await supabase
+    .from('kunder')
+    .select('id, fornamn, efternamn, foretagsnamn, email, telefon')
+    .order('fornamn');
+  const utanEpost = ((allaKunderRaw || []) as any[]).filter(function(k: any) {
+    return !(k.email && String(k.email).trim());
+  });
 
   /* Gruppera per månad */
   const grouped: Record<string, any[]> = {};
@@ -84,6 +95,53 @@ export default async function KunderPage(props: { searchParams?: Promise<{ ar?: 
           Inkommet: <strong className="text-ink font-medium">{aretInkommet.toLocaleString('sv-SE')} kr</strong>
         </div>
       </div>
+
+      {utanEpost.length > 0 && (
+        <details className="mb-8 bg-white border border-line-soft rounded-sm overflow-hidden">
+          <summary className="px-5 py-4 cursor-pointer select-none hover:bg-bg">
+            <span className="font-serif text-[19px]">Kunder som saknar mejl</span>
+            <span className="font-mono text-[11px] text-ink-faint ml-3 tracking-[0.1em]">{utanEpost.length} st</span>
+            <span className="text-[12px] text-ink-muted ml-3">klicka för att fylla i</span>
+          </summary>
+          <div className="border-t border-line">
+            <p className="text-ink-muted text-[12.5px] px-5 py-4">
+              Fyll i adressen och klicka Spara, så hamnar den på kunden och följer med till nästa bokning. Telefon är frivilligt. Tomma fält lämnar kunden orörd.
+            </p>
+            <table className="w-full">
+              <thead>
+                <tr>
+                  <Th>Kund</Th><Th>Mejl</Th><Th>Telefon</Th><Th />
+                </tr>
+              </thead>
+              <tbody>
+                {utanEpost.map(function(k: any) {
+                  const namn = k.foretagsnamn || `${k.fornamn || ''} ${k.efternamn || ''}`.trim();
+                  const formId = `kontakt-${k.id}`;
+                  return (
+                    <tr key={k.id} className="border-b border-line-soft last:border-0 hover:bg-bg">
+                      <Td className="font-serif text-[16px]">
+                        <Link href={`/admin/kunder/${k.id}`}>{namn || '–'}</Link>
+                      </Td>
+                      <Td>
+                        <input type="email" name="email" form={formId} placeholder="namn@exempel.se" className={`${inputSmall} min-w-[220px]`} />
+                      </Td>
+                      <Td>
+                        <input type="tel" name="telefon" form={formId} defaultValue={k.telefon || ''} className={inputSmall} />
+                      </Td>
+                      <Td>
+                        <form id={formId} action={sparaKundKontakt} className="flex justify-end">
+                          <input type="hidden" name="id" value={k.id} />
+                          <button type="submit" className="text-[11px] px-2.5 py-1 border border-line-soft rounded-sm hover:border-ink hover:bg-bg">Spara</button>
+                        </form>
+                      </Td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </details>
+      )}
 
       <div className="bg-white border border-line-soft rounded-sm overflow-hidden">
         <table className="w-full">
@@ -199,6 +257,20 @@ export default async function KunderPage(props: { searchParams?: Promise<{ ar?: 
     </div>
     </>
   );
+}
+
+const inputSmall = 'w-full px-2 py-1.5 bg-white border border-line-soft rounded-sm text-[12.5px] focus:outline-none focus:border-ink';
+
+function Th({ children }: { children?: React.ReactNode }) {
+  return (
+    <th className="font-mono text-[10px] tracking-[0.16em] uppercase text-ink-faint py-3.5 px-5 text-left border-b border-line bg-bg font-medium">
+      {children}
+    </th>
+  );
+}
+
+function Td({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  return <td className={`py-3 px-5 text-[13.5px] align-middle ${className}`}>{children}</td>;
 }
 
 function YearPill(props: { ar: number; aktiv: boolean; aktuellt: boolean }) {
