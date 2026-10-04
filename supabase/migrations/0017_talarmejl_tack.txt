@@ -1,0 +1,22 @@
+-- 0017: Tackmejl till talarna efter konferensen (2026-10-04)
+-- Körs i Supabase SQL Editor. Går att köra flera gånger utan skada.
+--
+-- Anna vill kunna mejla talarna måndagen efter konferenshelgen, tacka för
+-- dagen och be dem fakturera arvodet. Skickas med en egen knapp per talare,
+-- och knappen syns först från och med konferensdagen.
+
+alter table public.fam_talare add column if not exists tack_skickat_at timestamptz;
+
+-- Mallen går att redigera under Mailmallar. Läggs in en gång per användare.
+-- Variabler: {{fornamn}}, {{namn}}, {{arvode}}, {{konferensdatum}}, {{plats}}
+insert into public.mail_mallar (user_id, namn, kategori, amne, brodtext, ordning)
+select t.user_id,
+  'Tacka talare och be om faktura',
+  'talare_tack',
+  'Tack för en fin dag på Family and Meetings',
+  E'Hej {{fornamn}},\n\nTack för att du var med på Family and Meetings {{konferensdatum}}, och tack för din medverkan. Det blev en riktigt fin dag, och din del betydde mycket för helheten.\n\nNu får du gärna fakturera mig {{arvode}} kr ex moms. Skicka fakturan till kontakt@annaejemo.se, så betalar jag den så snart den kommer in.\n\nHör av dig om du undrar över något.\n\nKram\nAnna',
+  11
+from (select distinct user_id from public.fam_talare) t
+where not exists (
+  select 1 from public.mail_mallar m where m.user_id = t.user_id and m.kategori = 'talare_tack'
+);
