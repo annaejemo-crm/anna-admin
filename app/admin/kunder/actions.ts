@@ -178,3 +178,30 @@ export async function setBildpaket(formData: FormData) {
     const kundId = String(formData.get('kundId') || '');
     if (kundId) revalidatePath('/admin/kunder/' + kundId);
 }
+
+/**
+ * Sparar mejl och telefon pa en befintlig kund, inline fran listan
+ * Kunder som saknar mejl pa /admin/kunder. Tomt falt ror inte det som
+ * redan star pa kunden. Tillagd 2026-10-04 pa Annas begaran: de flesta
+ * kunder som lades in tidigt saknar adress, och de behovs for utskick.
+ */
+export async function sparaKundKontakt(formData: FormData) {
+  const supabase = await createClient();
+  const id = String(formData.get('id') || '');
+  if (!id) return;
+
+  const email = String(formData.get('email') || '').trim();
+  const telefon = String(formData.get('telefon') || '').trim();
+
+  const andring: { email?: string; telefon?: string } = {};
+  if (email) andring.email = email;
+  if (telefon) andring.telefon = telefon;
+  if (Object.keys(andring).length === 0) return;
+
+  await supabase.from('kunder').update(andring).eq('id', id);
+
+  revalidatePath('/admin');
+  revalidatePath('/admin/kunder');
+  revalidatePath(`/admin/kunder/${id}`);
+  revalidatePath('/admin/bokningar/ny');
+}
