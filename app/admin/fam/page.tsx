@@ -8,7 +8,7 @@ import {
   skapaUtgift, raderaUtgift, togglaBetaldUtgift,
   skapaUppgift, togglaUppgift, raderaUppgift,
   skapaSchemapost, raderaSchemapost,
-  beOmPresentation,
+  beOmPresentation, tackaTalare,
 } from './actions';
 import { DeltagareNamn } from './DeltagareNamn';
 
@@ -191,7 +191,7 @@ export default async function FamPage(props: { searchParams?: Promise<{ ar?: str
       ) : vy === 'oversikt' ? (
         <Oversikt konf={konf} antalDeltagare={antalDeltagare} antalBetalda={antalBetalda} totalIntakt={totalIntakt} antalTalare={antalTalare} antalSponsorer={antalSponsorer} sponsorIntakt={sponsorIntakt} antalUppgifter={antalUppgifter} klaraUppgifter={klaraUppgifter} faktiskaKostnader={faktiskaKostnader} summaUtgifter={summaUtgifter} summaArvoden={summaArvoden} />
       ) : vy === 'talare' ? (
-        <Talare valtAr={valtAr} talare={talare || []} />
+        <Talare valtAr={valtAr} talare={talare || []} konfDatum={konf.datum || null} />
       ) : vy === 'deltagare' ? (
         <Deltagare valtAr={valtAr} deltagare={deltagare || []} konf={konf} aterkommandeMap={aterkommandeMap} />
       ) : vy === 'sponsorer' ? (
@@ -295,8 +295,8 @@ function Oversikt(props: any) {
   );
 }
 
-function Talare(props: { valtAr: number; talare: any[] }) {
-  const { valtAr, talare } = props;
+function Talare(props: { valtAr: number; talare: any[]; konfDatum: string | null }) {
+  const { valtAr, talare, konfDatum } = props;
   return (
     <div className="space-y-6">
       <section className="bg-white border border-line-soft rounded-sm p-5">
@@ -321,14 +321,16 @@ function Talare(props: { valtAr: number; talare: any[] }) {
         <Tom text="Inga talare ännu" />
       ) : (
         <div className="grid grid-cols-2 gap-4">
-          {talare.map((t: any) => <TalareKort key={t.id} t={t} />)}
+          {talare.map((t: any) => <TalareKort key={t.id} t={t} konfDatum={konfDatum} />)}
         </div>
       )}
     </div>
   );
 }
 
-function TalareKort({ t }: { t: any }) {
+function TalareKort({ t, konfDatum }: { t: any; konfDatum: string | null }) {
+  /* Tackmejlet gar ut forst efter konferensen, sa det inte kan skickas i fortid. */
+  const efterKonferensen = !konfDatum || new Date().toISOString().slice(0, 10) >= String(konfDatum);
   const klart = (t.utkast_skickat ? 1 : 0) + (t.presentation_skickad ? 1 : 0) + (t.fakturerad ? 1 : 0);
   return (
     <div className="bg-white border border-line-soft rounded-sm p-5">
@@ -407,6 +409,26 @@ function TalareKort({ t }: { t: any }) {
           </form>
         ) : (
           <span className="text-[11px] text-ink-faint whitespace-nowrap">lägg in mejl först</span>
+        )}
+      </div>
+
+      <div className="border-t border-line-soft pt-3 mt-3 flex items-center justify-between gap-3">
+        <div className="text-[11.5px] text-ink-muted leading-snug">
+          {t.tack_skickat_at
+            ? `Tack och fakturafråga skickad ${new Date(t.tack_skickat_at).toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' })}`
+            : `Tacka efteråt och be om fakturan på ${(Number(t.arvode) > 0 ? Number(t.arvode) : 3500).toLocaleString('sv-SE')} kr ex moms`}
+        </div>
+        {!t.email ? (
+          <span className="text-[11px] text-ink-faint whitespace-nowrap">lägg in mejl först</span>
+        ) : !efterKonferensen ? (
+          <span className="text-[11px] text-ink-faint whitespace-nowrap">efter konferensen</span>
+        ) : (
+          <form action={tackaTalare}>
+            <input type="hidden" name="id" value={t.id} />
+            <button type="submit" className="text-[11px] px-2.5 py-1 border border-line-soft rounded-sm hover:border-ink hover:bg-bg whitespace-nowrap">
+              {t.tack_skickat_at ? 'Skicka igen' : 'Tacka och be om faktura'}
+            </button>
+          </form>
         )}
       </div>
     </div>
