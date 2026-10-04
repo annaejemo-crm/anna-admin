@@ -8,6 +8,7 @@ import {
   skapaUtgift, raderaUtgift, togglaBetaldUtgift,
   skapaUppgift, togglaUppgift, raderaUppgift,
   skapaSchemapost, raderaSchemapost,
+  beOmPresentation,
 } from './actions';
 import { DeltagareNamn } from './DeltagareNamn';
 
@@ -389,6 +390,24 @@ function TalareKort({ t }: { t: any }) {
           <TalareBock id={t.id} field="presentation_skickad" checked={!!t.presentation_skickad} label="Skicka in presentationen" />
           <TalareBock id={t.id} field="fakturerad" checked={!!t.fakturerad} label={`Fakturera mig${t.arvode ? ` ${t.arvode.toLocaleString('sv-SE')} kr ex moms` : ''}`} />
         </div>
+      </div>
+
+      <div className="border-t border-line-soft pt-3 mt-3 flex items-center justify-between gap-3">
+        <div className="text-[11.5px] text-ink-muted leading-snug">
+          {t.presentation_begard_at
+            ? `Presentationen efterfrågad ${new Date(t.presentation_begard_at).toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' })}`
+            : 'Mejla och be om den färdiga presentationen'}
+        </div>
+        {t.email ? (
+          <form action={beOmPresentation}>
+            <input type="hidden" name="id" value={t.id} />
+            <button type="submit" className="text-[11px] px-2.5 py-1 border border-line-soft rounded-sm hover:border-ink hover:bg-bg whitespace-nowrap">
+              {t.presentation_begard_at ? 'Skicka igen' : 'Be om presentationen'}
+            </button>
+          </form>
+        ) : (
+          <span className="text-[11px] text-ink-faint whitespace-nowrap">lägg in mejl först</span>
+        )}
       </div>
     </div>
   );
