@@ -2,6 +2,99 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { skickaMail } from '@/lib/mail';
+
+/* Sista dag for talarna att skicka in den fardiga presentationen.
+   Satt av Anna 2026-10-04 for konferensen i november 2026. Byt har om
+   deadline flyttas, texten i mejlet hamtar datumet harifran. */
+const PRESENTATION_DEADLINE = '2026-10-29';
+
+/* Reservtext om mallen med kategori talare saknas under Mailmallar. */
+const TALARMEJL_AMNE = 'Din presentation till Family and Meetings, senast {{deadline}}';
+const TALARMEJL_BRODTEXT = `Hej {{fornamn}},
+
+Vad roligt att du är med på Family and Meetings {{konferensdatum}}.
+
+Nu börjar det närma sig, och för att dagen ska flyta på behöver jag ha hela din presentation, helt färdig, absolut senast {{deadline}}. Skicka den till mig på kontakt@annaejemo.se.
+
+Hör av dig om du undrar över något, eller om du vill bolla upplägget innan.
+
+Kram
+Anna`;
+
+function langtDatum(iso: string | null): string {
+  if (!iso) return '';
+  return new Date(iso).toLocaleDateString('sv-SE', { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
+function fyllI(mall: string, vars: Record<string, string>): string {
+  return mall.replace(/\{\{(\w+)\}\}/g, function(_m, nyckel) { return vars[nyckel] ?? ''; });
+}
+
+/**
+ * Mejlar en talare och ber om den fardiga presentationen, med deadline.
+ * Skickas bara nar Anna klickar pa knappen, inget gar ut automatiskt.
+ * Texten hamtas fran mallen med kategori talare under Mailmallar, med
+ * reservtexten ovan om mallen saknas. Bokfors i mail_logg, och tiden
+ * sparas pa talaren sa Anna ser vad som redan gatt ut. Kraver 0016.
+ */
+export async function beOmPresentation(formData: FormData) {
+  const id = String(formData.get('id') || '');
+  if (!id) return;
+  const supabase = await createClient();
+
+  const { data: talare } = await supabase
+    .from('fam_talare')
+    .select('id, user_id, namn, email, konferens_id')
+    .eq('id', id)
+    .maybeSingle();
+  if (!talare || !talare.email) return;
+
+  const { data: konf } = await supabase
+    .from('fam_konferenser')
+    .select('datum, plats')
+    .eq('id', talare.konferens_id)
+    .maybeSingle();
+
+  const { data: mallar } = await supabase
+    .from('mail_mallar')
+    .select('id, amne, brodtext, aktiv')
+    .eq('user_id', talare.user_id)
+    .eq('kategori', 'talare')
+    .order('ordning', { ascending: true })
+    .limit(1);
+  const m = (mallar || [])[0];
+  const mall = (m && m.aktiv !== false && m.brodtext)
+    ? { id: String(m.id), amne: m.amne || TALARMEJL_AMNE, brodtext: m.brodtext }
+    : { id: null as string | null, amne: TALARMEJL_AMNE, brodtext: TALARMEJL_BRODTEXT };
+
+  const namn = String(talare.namn || '').trim();
+  const vars: Record<string, string> = {
+    namn: namn,
+    fornamn: namn.split(/\s+/)[0] || namn,
+    deadline: langtDatum(PRESENTATION_DEADLINE),
+    konferensdatum: langtDatum(konf?.datum || null),
+    plats: konf?.plats || '',
+  };
+
+  const amne = fyllI(mall.amne, vars);
+  const brodtext = fyllI(mall.brodtext, vars);
+  const res = await skickaMail({ till: talare.email, amne, brodtext });
+
+  await supabase.from('mail_logg').insert({
+    user_id: talare.user_id,
+    mall_id: mall.id,
+    till_email: talare.email,
+    amne: amne,
+    brodtext: brodtext,
+    status: res.ok ? 'skickat' : 'misslyckat',
+  });
+
+  if (res.ok) {
+    await supabase.from('fam_talare').update({ presentation_begard_at: new Date().toISOString() }).eq('id', id);
+  }
+  revalidatePath('/admin/fam');
+}
 
 function num(v: FormDataEntryValue | null): number | null {
   if (v === null || v === undefined || v === '') return null;
