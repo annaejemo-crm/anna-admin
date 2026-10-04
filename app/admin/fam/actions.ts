@@ -521,3 +521,92 @@ export async function bytDeltagare(formData: FormData) {
   }).eq('id', id);
   revalidatePath('/admin/fam');
 }
+
+/* ============ TACKMEJL TILL TALARNA ============ */
+
+/* Arvode om inget satts pa talaren. Anna sa 3500 kr ex moms 2026-10-04. */
+const TALARARVODE_FALLBACK = 3500;
+
+/* Reservtext om mallen med kategori talare_tack saknas under Mailmallar. */
+const TACKMEJL_AMNE = 'Tack för en fin dag på Family and Meetings';
+const TACKMEJL_BRODTEXT = `Hej {{fornamn}},
+
+Tack för att du var med på Family and Meetings {{konferensdatum}}, och tack för din medverkan. Det blev en riktigt fin dag, och din del betydde mycket för helheten.
+
+Nu får du gärna fakturera mig {{arvode}} kr ex moms. Skicka fakturan till kontakt@annaejemo.se, så betalar jag den så snart den kommer in.
+
+Hör av dig om du undrar över något.
+
+Kram
+Anna`;
+
+/**
+ * Tackar en talare for medverkan och ber om fakturan pa arvodet.
+ * Tankt att skickas mandagen efter konferenshelgen. Skickas bara nar Anna
+ * klickar pa knappen, och tidigast pa sjalva konferensdagen, sa inget kan
+ * ga ut i fortid. Texten hamtas fran mallen med kategori talare_tack under
+ * Mailmallar, med reservtexten ovan om mallen saknas. Bokfors i mail_logg
+ * och tiden sparas pa talaren. Kraver 0017.
+ */
+export async function tackaTalare(formData: FormData) {
+  const id = String(formData.get('id') || '');
+  if (!id) return;
+  const supabase = await createClient();
+
+  const { data: talare } = await supabase
+    .from('fam_talare')
+    .select('id, user_id, namn, email, arvode, konferens_id')
+    .eq('id', id)
+    .maybeSingle();
+  if (!talare || !talare.email) return;
+
+  const { data: konf } = await supabase
+    .from('fam_konferenser')
+    .select('datum, plats')
+    .eq('id', talare.konferens_id)
+    .maybeSingle();
+
+  /* Inget tackmejl innan konferensen ar genomford. */
+  const idag = new Date().toISOString().slice(0, 10);
+  if (konf?.datum && idag < String(konf.datum)) return;
+
+  const { data: mallar } = await supabase
+    .from('mail_mallar')
+    .select('id, amne, brodtext, aktiv')
+    .eq('user_id', talare.user_id)
+    .eq('kategori', 'talare_tack')
+    .order('ordning', { ascending: true })
+    .limit(1);
+  const m = (mallar || [])[0];
+  const mall = (m && m.aktiv !== false && m.brodtext)
+    ? { id: String(m.id), amne: m.amne || TACKMEJL_AMNE, brodtext: m.brodtext }
+    : { id: null as string | null, amne: TACKMEJL_AMNE, brodtext: TACKMEJL_BRODTEXT };
+
+  const namn = String(talare.namn || '').trim();
+  const arvode = Number(talare.arvode) > 0 ? Number(talare.arvode) : TALARARVODE_FALLBACK;
+  const vars: Record<string, string> = {
+    namn: namn,
+    fornamn: namn.split(/\s+/)[0] || namn,
+    arvode: arvode.toLocaleString('sv-SE'),
+    konferensdatum: langtDatum(konf?.datum || null),
+    plats: konf?.plats || '',
+  };
+
+  const amne = fyllI(mall.amne, vars);
+  const brodtext = fyllI(mall.brodtext, vars);
+  const res = await skickaMail({ till: talare.email, amne, brodtext });
+
+  await supabase.from('mail_logg').insert({
+    user_id: talare.user_id,
+    mall_id: mall.id,
+    till_email: talare.email,
+    amne: amne,
+    brodtext: brodtext,
+    status: res.ok ? 'skickat' : 'misslyckat',
+  });
+
+  if (res.ok) {
+    await supabase.from('fam_talare').update({ tack_skickat_at: new Date().toISOString() }).eq('id', id);
+  }
+  revalidatePath('/admin/fam');
+}
