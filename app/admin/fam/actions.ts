@@ -244,7 +244,13 @@ export async function uppdateraTalareArvode(formData: FormData) {
   const id = String(formData.get('id') || '');
   if (!id) return;
   const supabase = await createClient();
-  await supabase.from('fam_talare').update({ arvode: num(formData.get('arvode')) }).eq('id', id);
+  /* Rutan Inget arvode nollar beloppet, sa att kortet och tackmejlet vet
+     att talaren medverkar utan ersattning. Kraver 0019. */
+  const utanArvode = formData.get('utan_arvode') === 'on';
+  await supabase.from('fam_talare').update({
+    arvode: utanArvode ? null : num(formData.get('arvode')),
+    utan_arvode: utanArvode,
+  }).eq('id', id);
   revalidatePath('/admin/fam');
 }
 
@@ -573,11 +579,12 @@ export async function tackaTalare(formData: FormData) {
 
   const { data: talare } = await supabase
     .from('fam_talare')
-    .select('id, user_id, namn, email, arvode, roll, konferens_id')
+    .select('id, user_id, namn, email, arvode, roll, utan_arvode, konferens_id')
     .eq('id', id)
     .maybeSingle();
   if (!talare || !talare.email) return;
-  /* Korta pass utan arvode ska inte fa en fakturafraga. */
+  /* Talare utan arvode ska inte fa en fakturafraga. */
+  if (talare.utan_arvode) return;
   if (talare.roll === 'kort' && !(Number(talare.arvode) > 0)) return;
 
   const { data: konf } = await supabase
