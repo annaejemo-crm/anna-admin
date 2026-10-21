@@ -1,0 +1,11 @@
+-- 0018: Talarens roll på dagen (2026-10-21)
+-- Körs i Supabase SQL Editor. Går att köra flera gånger utan skada.
+--
+-- Anna vill kunna markera om en talare är en av de fyra huvudtalarna
+-- (35–45 min, arvode) eller en av de återkommande talarna med ett kort
+-- pass på 15 min, utan arvode. Tomt betyder att det inte är bestämt än.
+
+alter table public.fam_talare add column if not exists roll text;
+alter table public.fam_talare drop constraint if exists fam_talare_roll_check;
+alter table public.fam_talare add constraint fam_talare_roll_check
+  check (roll is null or roll in ('huvudtalare', 'kort'));
