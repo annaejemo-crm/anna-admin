@@ -179,8 +179,26 @@ export async function skapaTalare(formData: FormData) {
     telefon: String(formData.get('telefon') || '') || null,
     arvode: num(formData.get('arvode')),
     status: String(formData.get('status') || 'kontaktad'),
+    roll: talarroll(formData.get('roll')),
     anteckning: String(formData.get('anteckning') || '') || null,
   });
+  revalidatePath('/admin/fam');
+}
+
+/* Talarens roll pa dagen: huvudtalare (35-45 min, arvode) eller kort pass
+   (15 min, aterkommande talare utan arvode). Tomt = inte bestamt an. */
+const TALARROLLER = ['huvudtalare', 'kort'];
+function talarroll(v: FormDataEntryValue | null): string | null {
+  const r = String(v || '');
+  return TALARROLLER.includes(r) ? r : null;
+}
+
+/* Satter rollen direkt fran talarkortet. Kraver 0018. */
+export async function sattTalareRoll(formData: FormData) {
+  const id = String(formData.get('id') || '');
+  if (!id) return;
+  const supabase = await createClient();
+  await supabase.from('fam_talare').update({ roll: talarroll(formData.get('roll')) }).eq('id', id);
   revalidatePath('/admin/fam');
 }
 
@@ -555,10 +573,12 @@ export async function tackaTalare(formData: FormData) {
 
   const { data: talare } = await supabase
     .from('fam_talare')
-    .select('id, user_id, namn, email, arvode, konferens_id')
+    .select('id, user_id, namn, email, arvode, roll, konferens_id')
     .eq('id', id)
     .maybeSingle();
   if (!talare || !talare.email) return;
+  /* Korta pass utan arvode ska inte fa en fakturafraga. */
+  if (talare.roll === 'kort' && !(Number(talare.arvode) > 0)) return;
 
   const { data: konf } = await supabase
     .from('fam_konferenser')
