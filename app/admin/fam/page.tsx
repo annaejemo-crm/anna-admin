@@ -373,8 +373,10 @@ function TalarGrupp({ rubrik, info, talare, konfDatum, tomText }: { rubrik: stri
 function TalareKort({ t, konfDatum }: { t: any; konfDatum: string | null }) {
   /* Tackmejlet gar ut forst efter konferensen, sa det inte kan skickas i fortid. */
   const efterKonferensen = !konfDatum || new Date().toISOString().slice(0, 10) >= String(konfDatum);
-  const utanArvode = t.roll === 'kort' && !(Number(t.arvode) > 0);
-  const klart = (t.utkast_skickat ? 1 : 0) + (t.presentation_skickad ? 1 : 0) + (t.fakturerad ? 1 : 0);
+  const utanArvode = !!t.utan_arvode || (t.roll === 'kort' && !(Number(t.arvode) > 0));
+  /* Utan arvode finns ingen faktura att vanta pa, sa listan har tva punkter. */
+  const antalPunkter = utanArvode ? 2 : 3;
+  const klart = (t.utkast_skickat ? 1 : 0) + (t.presentation_skickad ? 1 : 0) + (!utanArvode && t.fakturerad ? 1 : 0);
   return (
     <div className="bg-white border border-line-soft rounded-sm p-5">
       <div className="flex justify-between items-start mb-3">
@@ -438,20 +440,28 @@ function TalareKort({ t, konfDatum }: { t: any; konfDatum: string | null }) {
         <input type="hidden" name="id" value={t.id} />
         <div className="flex-1">
           <div className="text-[10px] uppercase tracking-wider text-ink-faint mb-0.5">Arvode (kr ex moms)</div>
-          <input type="number" name="arvode" defaultValue={t.arvode || ''} placeholder="2500" className={iSty + ' text-[12px]'} />
+          <input type="number" name="arvode" defaultValue={t.utan_arvode ? '' : (t.arvode || '')} placeholder={t.utan_arvode ? 'inget arvode' : '2500'} disabled={!!t.utan_arvode} className={iSty + ' text-[12px]' + (t.utan_arvode ? ' bg-bg text-ink-faint' : '')} />
         </div>
+        <label className="flex items-center gap-1.5 h-[30px] text-[11px] text-ink-muted whitespace-nowrap">
+          <input type="checkbox" name="utan_arvode" defaultChecked={!!t.utan_arvode} className="w-3.5 h-3.5" />
+          Inget arvode
+        </label>
         <button type="submit" className="text-[11px] px-2 py-1.5 text-ink-muted hover:text-ink border border-line-soft rounded-sm">Spara</button>
       </form>
 
       <div className="border-t border-line-soft pt-3">
         <div className="flex justify-between items-center mb-2">
           <div className="eyebrow text-[10px]">Förberedelse</div>
-          <div className="text-[11px] font-mono text-ink-faint">{klart} / 3</div>
+          <div className="text-[11px] font-mono text-ink-faint">{klart} / {antalPunkter}</div>
         </div>
         <div className="space-y-1.5">
           <TalareBock id={t.id} field="utkast_skickat" checked={!!t.utkast_skickat} label="Skicka in utkast av presentation" />
           <TalareBock id={t.id} field="presentation_skickad" checked={!!t.presentation_skickad} label="Skicka in presentationen" />
-          <TalareBock id={t.id} field="fakturerad" checked={!!t.fakturerad} label={`Fakturera mig${t.arvode ? ` ${t.arvode.toLocaleString('sv-SE')} kr ex moms` : ''}`} />
+          {utanArvode ? (
+            <div className="flex items-center gap-2 text-[12.5px] text-ink-faint"><span className="w-4 h-4 inline-block border-2 border-dashed border-line rounded-sm" />Inget arvode, ingen faktura</div>
+          ) : (
+            <TalareBock id={t.id} field="fakturerad" checked={!!t.fakturerad} label={`Fakturera mig${t.arvode ? ` ${t.arvode.toLocaleString('sv-SE')} kr ex moms` : ''}`} />
+          )}
         </div>
       </div>
 
@@ -478,7 +488,7 @@ function TalareKort({ t, konfDatum }: { t: any; konfDatum: string | null }) {
           {t.tack_skickat_at
             ? `Tack och fakturafråga skickad ${new Date(t.tack_skickat_at).toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' })}`
             : utanArvode
-              ? 'Kort pass utan arvode, inget fakturamejl'
+              ? 'Medverkar utan arvode, inget fakturamejl'
               : `Tacka efteråt och be om fakturan på ${(Number(t.arvode) > 0 ? Number(t.arvode) : 3500).toLocaleString('sv-SE')} kr ex moms`}
         </div>
         {utanArvode ? (
