@@ -8,7 +8,7 @@ import {
   skapaUtgift, raderaUtgift, togglaBetaldUtgift,
   skapaUppgift, togglaUppgift, raderaUppgift,
   skapaSchemapost, raderaSchemapost,
-  beOmPresentation, tackaTalare,
+  beOmPresentation, tackaTalare, sattTalareRoll,
 } from './actions';
 import { DeltagareNamn } from './DeltagareNamn';
 
@@ -55,6 +55,14 @@ function prisForTyp(konf: any, biljettyp: string): number | null {
   if (biljettyp === 'boka_tidigt') return konf?.pris_boka_tidigt ?? null;
   return konf?.pris_ordinarie ?? null;
 }
+
+/* Rollen pa dagen. Planen for FAM 2027 ar fyra huvudtalare pa 35-45 min
+   plus nagra aterkommande talare med 15 min var, utan arvode. */
+const HUVUDTALARE_MAL = 4;
+const ROLL_LABEL: Record<string, string> = {
+  huvudtalare: 'Huvudtalare',
+  kort: 'Kort pass, 15 min',
+};
 
 const STATUS_LABEL: Record<string, string> = {
   kontaktad: 'Kontaktad',
@@ -134,6 +142,8 @@ export default async function FamPage(props: { searchParams?: Promise<{ ar?: str
   const antalBetalda = (deltagare || []).filter((d: any) => d.betald).length;
   const totalIntakt = (deltagare || []).filter((d: any) => d.betald).reduce((s: number, d: any) => s + (d.pris || 0), 0);
   const antalTalare = (talare || []).length;
+  const antalHuvudtalare = (talare || []).filter((t: any) => t.roll === 'huvudtalare').length;
+  const antalKortaPass = (talare || []).filter((t: any) => t.roll === 'kort').length;
   const antalSponsorer = (sponsorer || []).length;
   const sponsorIntakt = (sponsorer || []).reduce((s: number, sp: any) => s + (sp.belopp || 0), 0);
   const antalUppgifter = (uppgifter || []).length;
@@ -189,7 +199,7 @@ export default async function FamPage(props: { searchParams?: Promise<{ ar?: str
           <p className="text-sm">Lägg till år ovan så börjar vi.</p>
         </div>
       ) : vy === 'oversikt' ? (
-        <Oversikt konf={konf} antalDeltagare={antalDeltagare} antalBetalda={antalBetalda} totalIntakt={totalIntakt} antalTalare={antalTalare} antalSponsorer={antalSponsorer} sponsorIntakt={sponsorIntakt} antalUppgifter={antalUppgifter} klaraUppgifter={klaraUppgifter} faktiskaKostnader={faktiskaKostnader} summaUtgifter={summaUtgifter} summaArvoden={summaArvoden} />
+        <Oversikt konf={konf} antalDeltagare={antalDeltagare} antalBetalda={antalBetalda} totalIntakt={totalIntakt} antalTalare={antalTalare} antalHuvudtalare={antalHuvudtalare} antalKortaPass={antalKortaPass} antalSponsorer={antalSponsorer} sponsorIntakt={sponsorIntakt} antalUppgifter={antalUppgifter} klaraUppgifter={klaraUppgifter} faktiskaKostnader={faktiskaKostnader} summaUtgifter={summaUtgifter} summaArvoden={summaArvoden} />
       ) : vy === 'talare' ? (
         <Talare valtAr={valtAr} talare={talare || []} konfDatum={konf.datum || null} />
       ) : vy === 'deltagare' ? (
@@ -229,7 +239,7 @@ function NyttArForm() {
 }
 
 function Oversikt(props: any) {
-  const { konf, antalDeltagare, antalBetalda, totalIntakt, antalTalare, antalSponsorer, sponsorIntakt, antalUppgifter, klaraUppgifter, faktiskaKostnader, summaUtgifter, summaArvoden } = props;
+  const { konf, antalDeltagare, antalBetalda, totalIntakt, antalTalare, antalHuvudtalare, antalKortaPass, antalSponsorer, sponsorIntakt, antalUppgifter, klaraUppgifter, faktiskaKostnader, summaUtgifter, summaArvoden } = props;
   /* Alla som faktiskt star i lokalen: betalande deltagare, talarna och
      arrangorsteamet. Det ar den siffran lokal, lunch och stolar utgar fran. */
   const antalArrangorer = ARRANGORER.length;
@@ -264,7 +274,7 @@ function Oversikt(props: any) {
         <Kpi label="Sponsring" value={`${sponsorIntakt.toLocaleString('sv-SE')} kr`} sub={`${antalSponsorer} sponsorer`} />
       </div>
       <div className="grid grid-cols-4 gap-4">
-        <Kpi label="Talare" value={`${antalTalare} st`} sub="bokade till FAM" />
+        <Kpi label="Talare" value={`${antalTalare} st`} sub={antalHuvudtalare + antalKortaPass > 0 ? `${antalHuvudtalare} huvudtalare · ${antalKortaPass} korta pass` : 'bokade till FAM'} />
         <Kpi label="Uppgifter" value={`${klaraUppgifter} / ${antalUppgifter}`} sub="klara av totalt" />
         <Kpi label="Kostnader" value={`${faktiskaKostnader.toLocaleString('sv-SE')} kr`} sub={`${summaUtgifter.toLocaleString('sv-SE')} i utgifter · ${summaArvoden.toLocaleString('sv-SE')} i arvoden`} />
         <Kpi label={marginal >= 0 ? 'Marginal' : 'Underskott'} value={`${Math.abs(marginal).toLocaleString('sv-SE')} kr`} sub={marginal >= 0 ? 'intäkt minus kostnad' : 'kostnad större än intäkt'} />
@@ -297,11 +307,14 @@ function Oversikt(props: any) {
 
 function Talare(props: { valtAr: number; talare: any[]; konfDatum: string | null }) {
   const { valtAr, talare, konfDatum } = props;
+  const antalHuvud = talare.filter((t: any) => t.roll === 'huvudtalare').length;
+  const antalKorta = talare.filter((t: any) => t.roll === 'kort').length;
+  const antalUtanRoll = talare.length - antalHuvud - antalKorta;
   return (
     <div className="space-y-6">
       <section className="bg-white border border-line-soft rounded-sm p-5">
         <div className="eyebrow mb-3">Lägg till talare</div>
-        <form action={skapaTalare} className="grid grid-cols-[1.2fr_1.5fr_1fr_1fr_120px_auto] gap-2 items-end">
+        <form action={skapaTalare} className="grid grid-cols-[1.2fr_1.5fr_1fr_1fr_120px_150px_auto] gap-2 items-end">
           <input type="hidden" name="ar" value={valtAr} />
           <Fld label="Namn"><input type="text" name="namn" required className={iSty} /></Fld>
           <Fld label="Föreläsningstitel"><input type="text" name="forelasning_titel" className={iSty} /></Fld>
@@ -313,9 +326,23 @@ function Talare(props: { valtAr: number; talare: any[]; konfDatum: string | null
             <option value="bokad">Bokad</option>
             <option value="klar">Klar</option>
           </select></Fld>
+          <Fld label="Roll"><select name="roll" defaultValue="" className={iSty + ' bg-white'}>
+            <option value="">Inte bestämt</option>
+            <option value="huvudtalare">Huvudtalare</option>
+            <option value="kort">Kort pass, 15 min</option>
+          </select></Fld>
           <button type="submit" className="px-4 py-2 bg-ink text-bg text-sm rounded-sm">+ Lägg till</button>
         </form>
       </section>
+
+      {talare.length > 0 && (
+        <div className="flex items-center gap-4 text-[12.5px] text-ink-muted">
+          <span><span className="font-medium text-ink">{antalHuvud}</span> av {HUVUDTALARE_MAL} huvudtalare</span>
+          <span className="text-line">·</span>
+          <span><span className="font-medium text-ink">{antalKorta}</span> korta pass</span>
+          {antalUtanRoll > 0 && (<><span className="text-line">·</span><span>{antalUtanRoll} utan roll än</span></>)}
+        </div>
+      )}
 
       {talare.length === 0 ? (
         <Tom text="Inga talare ännu" />
@@ -331,6 +358,7 @@ function Talare(props: { valtAr: number; talare: any[]; konfDatum: string | null
 function TalareKort({ t, konfDatum }: { t: any; konfDatum: string | null }) {
   /* Tackmejlet gar ut forst efter konferensen, sa det inte kan skickas i fortid. */
   const efterKonferensen = !konfDatum || new Date().toISOString().slice(0, 10) >= String(konfDatum);
+  const utanArvode = t.roll === 'kort' && !(Number(t.arvode) > 0);
   const klart = (t.utkast_skickat ? 1 : 0) + (t.presentation_skickad ? 1 : 0) + (t.fakturerad ? 1 : 0);
   return (
     <div className="bg-white border border-line-soft rounded-sm p-5">
@@ -338,6 +366,11 @@ function TalareKort({ t, konfDatum }: { t: any; konfDatum: string | null }) {
         <div>
           <div className="font-serif text-[20px] leading-tight">{t.namn}</div>
           {t.forelasning_titel && <div className="text-[13px] text-ink-muted mt-1">{t.forelasning_titel}</div>}
+          {t.roll && (
+            <span className={`inline-block mt-2 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-sm ${t.roll === 'huvudtalare' ? 'bg-ink text-bg' : 'border border-line text-ink-muted'}`}>
+              {ROLL_LABEL[t.roll] || t.roll}
+            </span>
+          )}
         </div>
         <form action={raderaTalare}>
           <input type="hidden" name="id" value={t.id} />
@@ -357,6 +390,19 @@ function TalareKort({ t, konfDatum }: { t: any; konfDatum: string | null }) {
           <span className="font-medium">{STATUS_LABEL[t.status] || t.status}</span>
         </div>
       </div>
+
+      <form action={sattTalareRoll} className="flex items-end gap-2 mb-3">
+        <input type="hidden" name="id" value={t.id} />
+        <div className="flex-1">
+          <div className="text-[10px] uppercase tracking-wider text-ink-faint mb-0.5">Roll på dagen</div>
+          <select name="roll" defaultValue={t.roll || ''} className={iSty + ' text-[12px] bg-white'}>
+            <option value="">Inte bestämt</option>
+            <option value="huvudtalare">Huvudtalare, 35–45 min</option>
+            <option value="kort">Kort pass, 15 min</option>
+          </select>
+        </div>
+        <button type="submit" className="text-[11px] px-2 py-1.5 text-ink-muted hover:text-ink border border-line-soft rounded-sm">Spara</button>
+      </form>
 
       <form action={uppdateraTalareKontakt} className="grid grid-cols-2 gap-2 mb-3">
         <input type="hidden" name="id" value={t.id} />
@@ -416,9 +462,13 @@ function TalareKort({ t, konfDatum }: { t: any; konfDatum: string | null }) {
         <div className="text-[11.5px] text-ink-muted leading-snug">
           {t.tack_skickat_at
             ? `Tack och fakturafråga skickad ${new Date(t.tack_skickat_at).toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' })}`
-            : `Tacka efteråt och be om fakturan på ${(Number(t.arvode) > 0 ? Number(t.arvode) : 3500).toLocaleString('sv-SE')} kr ex moms`}
+            : utanArvode
+              ? 'Kort pass utan arvode, inget fakturamejl'
+              : `Tacka efteråt och be om fakturan på ${(Number(t.arvode) > 0 ? Number(t.arvode) : 3500).toLocaleString('sv-SE')} kr ex moms`}
         </div>
-        {!t.email ? (
+        {utanArvode ? (
+          <span className="text-[11px] text-ink-faint whitespace-nowrap">tackas för hand</span>
+        ) : !t.email ? (
           <span className="text-[11px] text-ink-faint whitespace-nowrap">lägg in mejl först</span>
         ) : !efterKonferensen ? (
           <span className="text-[11px] text-ink-faint whitespace-nowrap">efter konferensen</span>
