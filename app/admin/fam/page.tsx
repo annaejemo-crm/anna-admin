@@ -307,9 +307,11 @@ function Oversikt(props: any) {
 
 function Talare(props: { valtAr: number; talare: any[]; konfDatum: string | null }) {
   const { valtAr, talare, konfDatum } = props;
-  const antalHuvud = talare.filter((t: any) => t.roll === 'huvudtalare').length;
-  const antalKorta = talare.filter((t: any) => t.roll === 'kort').length;
-  const antalUtanRoll = talare.length - antalHuvud - antalKorta;
+  /* Talarna visas i grupper: huvudtalarna overst, de korta passen som en
+     egen rad langre ner, och sist de som inte fatt en roll an. */
+  const huvud = talare.filter((t: any) => t.roll === 'huvudtalare');
+  const korta = talare.filter((t: any) => t.roll === 'kort');
+  const utanRoll = talare.filter((t: any) => t.roll !== 'huvudtalare' && t.roll !== 'kort');
   return (
     <div className="space-y-6">
       <section className="bg-white border border-line-soft rounded-sm p-5">
@@ -335,23 +337,36 @@ function Talare(props: { valtAr: number; talare: any[]; konfDatum: string | null
         </form>
       </section>
 
-      {talare.length > 0 && (
-        <div className="flex items-center gap-4 text-[12.5px] text-ink-muted">
-          <span><span className="font-medium text-ink">{antalHuvud}</span> av {HUVUDTALARE_MAL} huvudtalare</span>
-          <span className="text-line">·</span>
-          <span><span className="font-medium text-ink">{antalKorta}</span> korta pass</span>
-          {antalUtanRoll > 0 && (<><span className="text-line">·</span><span>{antalUtanRoll} utan roll än</span></>)}
-        </div>
-      )}
-
       {talare.length === 0 ? (
         <Tom text="Inga talare ännu" />
+      ) : (
+        <>
+          <TalarGrupp rubrik="Huvudtalare" info={`${huvud.length} av ${HUVUDTALARE_MAL}`} talare={huvud} konfDatum={konfDatum} tomText="Inga huvudtalare än" />
+          <TalarGrupp rubrik="Korta pass, 15 min" info={`${korta.length} st`} talare={korta} konfDatum={konfDatum} tomText="Inga korta pass än" />
+          {utanRoll.length > 0 && (
+            <TalarGrupp rubrik="Roll inte bestämd än" info={`${utanRoll.length} st`} talare={utanRoll} konfDatum={konfDatum} tomText="" />
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function TalarGrupp({ rubrik, info, talare, konfDatum, tomText }: { rubrik: string; info: string; talare: any[]; konfDatum: string | null; tomText: string }) {
+  return (
+    <section>
+      <div className="flex items-baseline justify-between mb-3 pt-2 border-t border-line-soft">
+        <div className="eyebrow">{rubrik}</div>
+        <div className="text-[11px] font-mono text-ink-faint">{info}</div>
+      </div>
+      {talare.length === 0 ? (
+        <div className="bg-white border border-dashed border-line rounded-sm p-6 text-center text-[12.5px] text-ink-muted">{tomText}</div>
       ) : (
         <div className="grid grid-cols-2 gap-4">
           {talare.map((t: any) => <TalareKort key={t.id} t={t} konfDatum={konfDatum} />)}
         </div>
       )}
-    </div>
+    </section>
   );
 }
 
