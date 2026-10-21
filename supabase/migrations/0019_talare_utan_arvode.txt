@@ -1,0 +1,8 @@
+-- 0019: Talare utan arvode (2026-10-21)
+-- Körs i Supabase SQL Editor. Går att köra flera gånger utan skada.
+--
+-- Anna vill kunna kryssa i Inget arvode på en talare, främst de korta
+-- passen på 15 min. Då nollas arvodet, punkten Fakturera mig försvinner
+-- från kortet och tackmejlet efter konferensen ber inte om någon faktura.
+
+alter table public.fam_talare add column if not exists utan_arvode boolean not null default false;
