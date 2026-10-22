@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
 import {
   uppdateraKonferens,
-  skapaTalare, raderaTalare, togglaTalareCheck, uppdateraTalareArvode, uppdateraTalareKontakt,
+  skapaTalare, raderaTalare, togglaTalareCheck, uppdateraTalareArvode, uppdateraTalareKontakt, uppdateraTalare, sattTalareStatus,
   skapaDeltagare, raderaDeltagare, togglaBetaldDeltagare, andraBiljettyp, sattBiljettypForAlla,
   skapaSponsor, raderaSponsor,
   skapaUtgift, raderaUtgift, togglaBetaldUtgift,
@@ -402,11 +402,54 @@ function TalareKort({ t, konfDatum }: { t: any; konfDatum: string | null }) {
           <div className="text-[10px] uppercase tracking-wider text-ink-faint mb-0.5">Hemsida</div>
           {t.hemsida ? <a href={t.hemsida.startsWith('http') ? t.hemsida : `https://${t.hemsida}`} target="_blank" rel="noreferrer" className="text-accent hover:underline font-mono text-[12px]">{t.hemsida}</a> : <span className="text-ink-faint">tom</span>}
         </div>
-        <div>
-          <div className="text-[10px] uppercase tracking-wider text-ink-faint mb-0.5">Status</div>
-          <span className="font-medium">{STATUS_LABEL[t.status] || t.status}</span>
-        </div>
+        <form action={sattTalareStatus} className="flex items-end gap-2">
+          <input type="hidden" name="id" value={t.id} />
+          <div className="flex-1">
+            <div className="text-[10px] uppercase tracking-wider text-ink-faint mb-0.5">Status</div>
+            <select name="status" defaultValue={t.status || 'kontaktad'} className={iSty + ' text-[12px] bg-white'}>
+              <option value="kontaktad">Kontaktad</option>
+              <option value="pendlar">Inväntar svar</option>
+              <option value="bokad">Bokad</option>
+              <option value="klar">Klar</option>
+            </select>
+          </div>
+          <button type="submit" className="text-[11px] px-2 py-1.5 text-ink-muted hover:text-ink border border-line-soft rounded-sm">Spara</button>
+        </form>
       </div>
+
+      <details className="mb-3 group">
+        <summary className="cursor-pointer text-[11px] text-ink-muted hover:text-ink select-none list-none flex items-center gap-1">
+          <span className="inline-block transition-transform group-open:rotate-90">›</span> Redigera namn, titel, ämne och hemsida
+        </summary>
+        <form action={uppdateraTalare} className="mt-3 space-y-2 bg-bg border border-line-soft rounded-sm p-3">
+          <input type="hidden" name="id" value={t.id} />
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-ink-faint mb-0.5">Namn</div>
+              <input type="text" name="namn" defaultValue={t.namn || ''} required className={iSty + ' text-[12px]'} />
+            </div>
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-ink-faint mb-0.5">Föreläsningstitel</div>
+              <input type="text" name="forelasning_titel" defaultValue={t.forelasning_titel || ''} className={iSty + ' text-[12px]'} />
+            </div>
+          </div>
+          <div>
+            <div className="text-[10px] uppercase tracking-wider text-ink-faint mb-0.5">Hemsida</div>
+            <input type="text" name="hemsida" defaultValue={t.hemsida || ''} placeholder="annas.com" className={iSty + ' text-[12px]'} />
+          </div>
+          <div>
+            <div className="text-[10px] uppercase tracking-wider text-ink-faint mb-0.5">Ämne, visas på kortet</div>
+            <textarea name="amne" defaultValue={t.amne || ''} rows={3} className={iSty + ' text-[12px] resize-y'} />
+          </div>
+          <div>
+            <div className="text-[10px] uppercase tracking-wider text-ink-faint mb-0.5">Intern anteckning</div>
+            <textarea name="anteckning" defaultValue={t.anteckning || ''} rows={2} className={iSty + ' text-[12px] resize-y'} />
+          </div>
+          <div className="flex justify-end">
+            <button type="submit" className="text-[11px] px-3 py-1.5 bg-ink text-bg rounded-sm hover:bg-ink/90">Spara ändringar</button>
+          </div>
+        </form>
+      </details>
 
       <form action={sattTalareRoll} className="flex items-end gap-2 mb-3">
         <input type="hidden" name="id" value={t.id} />
