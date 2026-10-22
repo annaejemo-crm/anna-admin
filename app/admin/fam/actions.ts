@@ -202,21 +202,32 @@ export async function sattTalareRoll(formData: FormData) {
   revalidatePath('/admin/fam');
 }
 
+/* Redigera-blocket pa talarkortet: namn, titel, amne, hemsida och
+   anteckning. Kontakt, arvode, roll och status har egna formular pa
+   kortet och rors inte har, sa inget nollas av misstag. */
 export async function uppdateraTalare(formData: FormData) {
   const id = String(formData.get('id') || '');
-  if (!id) return;
+  const namn = String(formData.get('namn') || '').trim();
+  if (!id || !namn) return;
   const supabase = await createClient();
   await supabase.from('fam_talare').update({
-    namn: String(formData.get('namn') || ''),
-    forelasning_titel: String(formData.get('forelasning_titel') || '') || null,
-    amne: String(formData.get('amne') || '') || null,
-    hemsida: String(formData.get('hemsida') || '') || null,
-    email: String(formData.get('email') || '') || null,
-    telefon: String(formData.get('telefon') || '') || null,
-    arvode: num(formData.get('arvode')),
-    status: String(formData.get('status') || 'kontaktad'),
-    anteckning: String(formData.get('anteckning') || '') || null,
+    namn,
+    forelasning_titel: String(formData.get('forelasning_titel') || '').trim() || null,
+    amne: String(formData.get('amne') || '').trim() || null,
+    hemsida: String(formData.get('hemsida') || '').trim() || null,
+    anteckning: String(formData.get('anteckning') || '').trim() || null,
   }).eq('id', id);
+  revalidatePath('/admin/fam');
+}
+
+/* Byter status direkt pa kortet, t.ex. fran Invantar svar till Bokad. */
+export async function sattTalareStatus(formData: FormData) {
+  const id = String(formData.get('id') || '');
+  const status = String(formData.get('status') || '');
+  const tillatna = ['kontaktad', 'pendlar', 'bokad', 'klar'];
+  if (!id || !tillatna.includes(status)) return;
+  const supabase = await createClient();
+  await supabase.from('fam_talare').update({ status }).eq('id', id);
   revalidatePath('/admin/fam');
 }
 
